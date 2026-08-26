@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src https://wzvmdfvheoenuucmizfy.supabase.co https://cavjsnlmktsjlofhokkg.supabase.co; base-uri 'none'; form-action 'self'; frame-ancestors 'none'">
+  <title>Rebornly — Set new password</title>
+  <style>
+    :root{color-scheme:dark}body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#101010;color:#f5f1ee}main{width:min(92vw,520px)}.card{background:#191919;border:1px solid #333;border-radius:20px;padding:28px;box-shadow:0 18px 60px rgba(0,0,0,.35)}h1{margin:0 0 10px;font-size:1.8rem}p{color:#c9c3bf;line-height:1.5}label{display:block;margin:18px 0 7px;font-weight:650}input{width:100%;box-sizing:border-box;padding:14px;border-radius:12px;border:1px solid #555;background:#0d0d0d;color:#fff}button{width:100%;margin-top:20px;padding:14px 16px;border:0;border-radius:12px;font-weight:750;cursor:pointer}#status{margin-top:16px;min-height:24px;line-height:1.45}.small{font-size:.9rem;color:#9f9995}
+  </style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <h1>Set a new password</h1>
+    <p>Choose a new password for your Rebornly account.</p>
+    <form id="form" autocomplete="off">
+      <label for="password">New password</label>
+      <input id="password" type="password" minlength="15" required autocomplete="new-password">
+      <label for="confirm">Confirm password</label>
+      <input id="confirm" type="password" minlength="15" required autocomplete="new-password">
+      <button type="submit">Update password</button>
+    </form>
+    <div id="status" role="status" aria-live="polite"></div>
+    <p class="small">Rebornly secure account recovery</p>
+  </div>
+</main>
+<script>
+(() => {
+  const configs = {
+    wzvmdfvheoenuucmizfy: {
+      url: 'https://wzvmdfvheoenuucmizfy.supabase.co',
+      key: 'sb_publishable_WD8mivYsYDdZgByq6TYISQ_KbnVA75E'
+    },
+    cavjsnlmktsjlofhokkg: {
+      url: 'https://cavjsnlmktsjlofhokkg.supabase.co',
+      key: 'sb_publishable_lOCqm6RehtIJ8OwgLbTkDg_lnXoUWg-'
+    }
+  };
+
+  const hash = new URLSearchParams(location.hash.startsWith('#') ? location.hash.slice(1) : '');
+  const accessToken = hash.get('access_token');
+  const type = hash.get('type');
+  const errorDescription = hash.get('error_description');
+  history.replaceState(null, '', location.pathname + location.search);
+
+  const form = document.getElementById('form');
+  const status = document.getElementById('status');
+
+  function fail(message) {
+    form.hidden = true;
+    status.textContent = message;
+  }
+
+  if (!accessToken || (type && type !== 'recovery')) {
+    fail(errorDescription || 'This recovery link is invalid or has expired. Request a new password reset email.');
+    return;
+  }
+
+  let ref = null;
+  try {
+    const payloadPart = accessToken.split('.')[1];
+    const normalized = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized + '='.repeat((4 - normalized.length % 4) % 4);
+    const payload = JSON.parse(decodeURIComponent(Array.from(atob(padded), c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0')).join('')));
+    const issuer = String(payload.iss || '');
+    ref = Object.keys(configs).find(candidate => issuer.includes(candidate)) || null;
+  } catch (_) {}
+
+  if (!ref) {
+    fail('This recovery link does not belong to a recognized Rebornly environment.');
+    return;
+  }
+
+  const config = configs[ref];
+
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    const password = document.getElementById('password').value;
+    const confirm = document.getElementById('confirm').value;
+
+    if (password.length < 15) {
+      status.textContent = 'Use at least 15 characters.';
+      return;
+    }
+    if (password !== confirm) {
+      status.textContent = 'The passwords do not match.';
+      return;
+    }
+
+    status.textContent = 'Updating password…';
+
+    try {
+      const response = await fetch(config.url + '/auth/v1/user', {
+        method: 'PUT',
+        headers: {
+          apikey: config.key,
+          Authorization: 'Bearer ' + accessToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ password })
+      });
+      const body = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        status.textContent = body.msg || body.message || body.error_description || 'The password could not be updated. The recovery session may have expired.';
+        return;
+      }
+
+      try {
+        await fetch(config.url + '/auth/v1/logout?scope=global', {
+          method: 'POST',
+          headers: { apikey: config.key, Authorization: 'Bearer ' + accessToken }
+        });
+      } catch (_) {}
+
+      form.hidden = true;
+      status.textContent = 'Password updated successfully. You can now return to Rebornly and sign in.';
+    } catch (_) {
+      status.textContent = 'Network error. Please try again.';
+    }
+  });
+})();
+</script>
+</body>
+</html>
