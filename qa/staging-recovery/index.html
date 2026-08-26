@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src https://wzvmdfvheoenuucmizfy.supabase.co; base-uri 'none'; form-action 'self'">
+  <title>Rebornly — Staging recovery QA</title>
+  <style>
+    :root{color-scheme:dark}body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#101010;color:#f5f1ee}main{width:min(92vw,520px)}.card{background:#191919;border:1px solid #333;border-radius:20px;padding:28px}h1{margin:0 0 10px}p{color:#c9c3bf;line-height:1.5}.tag{display:inline-block;padding:5px 9px;border:1px solid #555;border-radius:999px;font-size:.8rem;margin-bottom:14px}label{display:block;margin:18px 0 7px;font-weight:650}input{width:100%;box-sizing:border-box;padding:14px;border-radius:12px;border:1px solid #555;background:#0d0d0d;color:#fff}button{width:100%;margin-top:20px;padding:14px 16px;border:0;border-radius:12px;font-weight:750;cursor:pointer}#status{margin-top:16px;min-height:24px;line-height:1.45}.small{font-size:.88rem;color:#9f9995}
+  </style>
+</head>
+<body>
+<main><div class="card">
+  <div class="tag">STAGING QA ONLY</div>
+  <h1>Send password recovery</h1>
+  <p>This test uses Rebornly Staging and explicitly redirects the recovery session to <strong>/r/AUTH-06</strong>.</p>
+  <form id="form" autocomplete="off">
+    <label for="email">Email</label>
+    <input id="email" type="email" required autocomplete="email">
+    <button type="submit">Send reset email</button>
+  </form>
+  <div id="status" role="status" aria-live="polite"></div>
+  <p class="small">The email address is sent directly to Rebornly Staging Auth and is not stored by this page.</p>
+</div></main>
+<script>
+(() => {
+  const form = document.getElementById('form');
+  const status = document.getElementById('status');
+  const button = form.querySelector('button');
+  const endpoint = 'https://wzvmdfvheoenuucmizfy.supabase.co/auth/v1/recover?redirect_to=' + encodeURIComponent('https://rebornlyapp.com/r/AUTH-06');
+  const key = 'sb_publishable_WD8mivYsYDdZgByq6TYISQ_KbnVA75E';
+
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    const email = document.getElementById('email').value.trim();
+    if (!email) return;
+    button.disabled = true;
+    status.textContent = 'Sending…';
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          apikey: key,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email })
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        status.textContent = body.msg || body.message || body.error_description || 'Could not send recovery email.';
+        return;
+      }
+      form.reset();
+      status.textContent = 'Recovery email requested. Open the newest email and use the reset link once.';
+    } catch (_) {
+      status.textContent = 'Network error. Please try again.';
+    } finally {
+      button.disabled = false;
+    }
+  });
+})();
+</script>
+</body>
+</html>
