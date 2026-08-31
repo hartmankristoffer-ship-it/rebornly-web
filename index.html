@@ -40,7 +40,7 @@
       --text-soft: #6f625d;
       --text-faint: #8b7d77;
       --border: #e9dad4;
-      --shadow: rgba(90, 61, 56, .10);
+      --shadow: rgba(90, 61, 56, 0.10);
       --serif: "Noto Serif", "DM Serif Display", Georgia, "Times New Roman", serif;
       --sans: Inter, Roboto, "Helvetica Neue", Arial, system-ui, -apple-system, sans-serif;
     }
@@ -78,13 +78,13 @@
     body::before {
       top: -16rem;
       right: -13rem;
-      background: radial-gradient(circle, rgba(248,229,228,.95) 0%, rgba(248,229,228,0) 70%);
+      background: radial-gradient(circle, rgba(248, 229, 228, .95) 0%, rgba(248, 229, 228, 0) 70%);
     }
 
     body::after {
       bottom: -18rem;
       left: -15rem;
-      background: radial-gradient(circle, rgba(229,235,225,.75) 0%, rgba(229,235,225,0) 72%);
+      background: radial-gradient(circle, rgba(229, 235, 225, .75) 0%, rgba(229, 235, 225, 0) 72%);
     }
 
     .page {
@@ -97,28 +97,23 @@
       flex-direction: column;
     }
 
-    main {
-      flex: 1;
-      display: grid;
-      place-items: center;
-      padding: clamp(34px, 7vh, 76px) 0 clamp(56px, 9vh, 94px);
+    .brand-lockup {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(16px, 2.2vw, 22px);
+      margin: 0 auto clamp(30px, 4vw, 38px);
     }
 
-    .hero {
-      width: min(100%, 790px);
-      text-align: center;
-      animation: hero-in .7s cubic-bezier(.2,.7,.2,1) both;
-    }
-
-    .hero-logo {
-      width: clamp(100px, 13vw, 132px);
-      height: clamp(100px, 13vw, 132px);
-      margin: 0 auto 16px;
+    .brand-lockup-logo {
+      width: clamp(88px, 11vw, 106px);
+      height: clamp(88px, 11vw, 106px);
       overflow: hidden;
+      flex: 0 0 auto;
       background: var(--bg);
     }
 
-    .hero-logo img {
+    .brand-lockup-logo img {
       display: block;
       width: 100%;
       height: 100%;
@@ -127,14 +122,28 @@
       mix-blend-mode: multiply;
     }
 
-    .brand-name {
-      margin: 0 auto 30px;
+    .brand-lockup-name {
+      margin: 0;
       font-family: var(--serif);
-      font-size: clamp(34px, 4.5vw, 48px);
+      font-size: clamp(40px, 5.4vw, 54px);
       line-height: 1;
-      font-weight: 500;
-      letter-spacing: -.045em;
-      color: var(--text);
+      font-weight: 600;
+      letter-spacing: -.035em;
+      color: var(--rose);
+      white-space: nowrap;
+    }
+
+    main {
+      flex: 1;
+      display: grid;
+      place-items: center;
+      padding: clamp(46px, 8vh, 92px) 0 clamp(62px, 10vh, 112px);
+    }
+
+    .hero {
+      width: min(100%, 790px);
+      text-align: center;
+      animation: hero-in .7s cubic-bezier(.2, .7, .2, 1) both;
     }
 
     .eyebrow {
@@ -174,7 +183,7 @@
       padding: 10px 14px;
       border: 1px solid var(--border);
       border-radius: 999px;
-      background: rgba(255,252,250,.72);
+      background: rgba(255, 252, 250, .72);
       color: var(--text-soft);
       font-size: 13px;
       line-height: 1.35;
@@ -187,8 +196,8 @@
 
     .trust {
       width: min(100%, 680px);
-      margin: 52px auto 0;
-      padding-top: 22px;
+      margin: 56px auto 0;
+      padding-top: 24px;
       border-top: 1px solid var(--border);
       color: var(--text-faint);
       font-size: 13px;
@@ -237,7 +246,7 @@
 
     #fallback button:hover { background: var(--rose-deep); }
     #fallback button:active { transform: translateY(1px); }
-    #fallback button:focus-visible { outline: 3px solid rgba(201,104,117,.28); outline-offset: 3px; }
+    #fallback button:focus-visible { outline: 3px solid rgba(201, 104, 117, .28); outline-offset: 3px; }
 
     footer {
       display: flex;
@@ -246,6 +255,7 @@
       min-height: 34px;
       color: var(--text-faint);
       font-size: 12px;
+      letter-spacing: .01em;
       text-align: center;
     }
 
@@ -256,22 +266,24 @@
 
     @media (max-width: 640px) {
       .page {
-        padding: max(22px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+        padding: max(24px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
       }
-
-      main { padding-top: 24px; padding-bottom: 52px; }
-      .hero-logo { width: 110px; height: 110px; margin-bottom: 13px; }
-      .brand-name { margin-bottom: 28px; font-size: 37px; }
+      main { padding-top: 28px; padding-bottom: 56px; }
+      .brand-lockup { gap: 16px; margin-bottom: 32px; }
+      .brand-lockup-logo { width: 92px; height: 92px; }
+      .brand-lockup-name { font-size: 44px; }
       .eyebrow { margin-bottom: 16px; font-size: 11px; }
       .intro { margin-top: 20px; }
       .status { margin-top: 26px; border-radius: 16px; }
-      .trust { margin-top: 40px; padding-top: 20px; }
+      .trust { margin-top: 42px; padding-top: 20px; }
     }
 
     @media (max-width: 380px) {
       .page { padding-left: 16px; padding-right: 16px; }
       h1 { font-size: 36px; }
-      .brand-name { font-size: 34px; }
+      .brand-lockup { gap: 13px; }
+      .brand-lockup-logo { width: 78px; height: 78px; }
+      .brand-lockup-name { font-size: 38px; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -288,10 +300,12 @@
   <div class="page">
     <main>
       <section class="hero" aria-labelledby="hero-title">
-        <div class="hero-logo" aria-hidden="true">
-          <img src="/assets/branding/rebornly_logo.png" alt="">
+        <div class="brand-lockup" aria-label="Rebornly">
+          <span class="brand-lockup-logo" aria-hidden="true">
+            <img src="/assets/branding/rebornly_logo.png" alt="">
+          </span>
+          <span class="brand-lockup-name">Rebornly</span>
         </div>
-        <p class="brand-name" aria-label="Rebornly">Rebornly</p>
         <p class="eyebrow">Coming soon</p>
         <h1 id="hero-title">A new home for the reborn community.</h1>
         <p class="intro">Rebornly is a new community for reborn collectors, artists and creators — a thoughtful place to discover, share and connect around reborn artistry and collecting.</p>
