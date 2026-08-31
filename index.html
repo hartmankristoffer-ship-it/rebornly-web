@@ -2,9 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="referrer" content="no-referrer">
-  <title>Rebornly</title>
+  <meta name="description" content="Rebornly is a new community in development for reborn collectors, artists and creators.">
+  <meta name="theme-color" content="#fff9f6">
+  <title>Rebornly — Coming soon</title>
+  <link rel="icon" type="image/png" href="/assets/branding/rebornly_logo.png">
   <script>
     (() => {
       const hashParams = new URLSearchParams(location.hash.startsWith('#') ? location.hash.slice(1) : '');
@@ -26,36 +29,349 @@
     })();
   </script>
   <style>
-    :root{color-scheme:dark}
-    body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#101010;color:#f5f1ee}
-    main{width:min(92vw,540px)}
-    .card{background:#191919;border:1px solid #333;border-radius:20px;padding:30px;box-shadow:0 18px 60px rgba(0,0,0,.3)}
-    h1{margin:0 0 10px}
-    p{color:#c9c3bf;line-height:1.55}
-    button{width:100%;margin-top:18px;padding:14px 16px;border:0;border-radius:12px;font-weight:750;cursor:pointer}
-    #fallback{display:none}
+    :root {
+      color-scheme: light;
+      --bg: #fff9f6;
+      --bg-soft: #f8eee9;
+      --surface: #fffcfa;
+      --rose: #c96875;
+      --rose-deep: #ae5360;
+      --sage: #76866f;
+      --rose-wash: #fcebec;
+      --nude-soft: #f4e7dd;
+      --text: #332b29;
+      --text-soft: #6f625d;
+      --text-faint: #8b7d77;
+      --border: #e9dad4;
+      --shadow: rgba(90, 61, 56, 0.10);
+      --serif: "Noto Serif", "DM Serif Display", Georgia, "Times New Roman", serif;
+      --sans: Inter, Roboto, "Helvetica Neue", Arial, system-ui, -apple-system, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { min-width: 100%; background: var(--bg); }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      min-height: 100svh;
+      overflow-x: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      z-index: -1;
+      width: 32rem;
+      height: 32rem;
+      border-radius: 50%;
+      pointer-events: none;
+      filter: blur(10px);
+      opacity: .58;
+    }
+
+    body::before {
+      top: -16rem;
+      right: -13rem;
+      background: radial-gradient(circle, rgba(248, 229, 228, .95) 0%, rgba(248, 229, 228, 0) 70%);
+    }
+
+    body::after {
+      bottom: -18rem;
+      left: -15rem;
+      background: radial-gradient(circle, rgba(229, 235, 225, .75) 0%, rgba(229, 235, 225, 0) 72%);
+    }
+
+    .page {
+      width: min(100%, 1120px);
+      min-height: 100vh;
+      min-height: 100svh;
+      margin: 0 auto;
+      padding: max(30px, env(safe-area-inset-top)) clamp(20px, 5vw, 72px) max(22px, env(safe-area-inset-bottom));
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 13px;
+      width: fit-content;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      overflow: hidden;
+      flex: 0 0 auto;
+      background: var(--bg);
+    }
+
+    .brand-mark img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scale(1.14);
+      mix-blend-mode: multiply;
+    }
+
+    .brand-wordmark {
+      display: block;
+      width: 132px;
+      height: auto;
+      mix-blend-mode: multiply;
+    }
+
+    main {
+      flex: 1;
+      display: grid;
+      place-items: center;
+      padding: clamp(52px, 9vh, 106px) 0 clamp(62px, 10vh, 112px);
+    }
+
+    .hero {
+      width: min(100%, 790px);
+      text-align: center;
+      animation: hero-in .7s cubic-bezier(.2, .7, .2, 1) both;
+    }
+
+    .hero-logo {
+      width: clamp(92px, 13vw, 132px);
+      height: clamp(92px, 13vw, 132px);
+      margin: 0 auto 24px;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    .hero-logo img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scale(1.14);
+      mix-blend-mode: multiply;
+    }
+
+    .hero-wordmark {
+      display: block;
+      width: clamp(205px, 34vw, 286px);
+      max-width: 78vw;
+      height: auto;
+      margin: 0 auto 30px;
+      mix-blend-mode: multiply;
+    }
+
+    .eyebrow {
+      margin: 0 0 18px;
+      color: var(--rose-deep);
+      font-size: 12px;
+      line-height: 1;
+      font-weight: 700;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0 auto;
+      max-width: 720px;
+      font-family: var(--serif);
+      font-size: clamp(38px, 6vw, 68px);
+      line-height: 1.08;
+      font-weight: 400;
+      letter-spacing: -.035em;
+      text-wrap: balance;
+    }
+
+    .intro {
+      max-width: 650px;
+      margin: 24px auto 0;
+      color: var(--text-soft);
+      font-size: clamp(16px, 2vw, 18px);
+      line-height: 1.68;
+      text-wrap: balance;
+    }
+
+    .status {
+      width: fit-content;
+      max-width: 100%;
+      margin: 30px auto 0;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(255, 252, 250, .72);
+      color: var(--text-soft);
+      font-size: 13px;
+      line-height: 1.35;
+      box-shadow: 0 8px 30px var(--shadow);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .status strong {
+      color: var(--text);
+      font-weight: 650;
+    }
+
+    .trust {
+      width: min(100%, 680px);
+      margin: 56px auto 0;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      color: var(--text-faint);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .trust-icon {
+      display: inline-grid;
+      width: 22px;
+      height: 22px;
+      margin-right: 8px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--rose-wash);
+      color: var(--rose-deep);
+      font-size: 12px;
+      font-weight: 800;
+      vertical-align: -2px;
+    }
+
+    #fallback {
+      display: none;
+      width: min(100%, 620px);
+      margin: 28px auto 0;
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--surface);
+      box-shadow: 0 18px 50px var(--shadow);
+    }
+
+    #fallback p {
+      margin: 0;
+      color: var(--text-soft);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    #fallback button {
+      width: 100%;
+      margin-top: 14px;
+      padding: 13px 16px;
+      border: 0;
+      border-radius: 12px;
+      background: var(--rose);
+      color: #fff;
+      font: 700 14px/1 var(--sans);
+      cursor: pointer;
+      transition: transform .18s ease, background-color .18s ease;
+    }
+
+    #fallback button:hover { background: var(--rose-deep); }
+    #fallback button:active { transform: translateY(1px); }
+    #fallback button:focus-visible { outline: 3px solid rgba(201, 104, 117, .28); outline-offset: 3px; }
+
+    footer {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 34px;
+      color: var(--text-faint);
+      font-size: 12px;
+      letter-spacing: .01em;
+      text-align: center;
+    }
+
+    @keyframes hero-in {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 640px) {
+      .page { padding-left: 20px; padding-right: 20px; }
+      .brand-mark { width: 36px; height: 36px; }
+      .brand-wordmark { width: 116px; }
+      main { padding-top: 48px; padding-bottom: 62px; }
+      .hero-logo { margin-bottom: 18px; }
+      .hero-wordmark { margin-bottom: 26px; }
+      .eyebrow { margin-bottom: 16px; font-size: 11px; }
+      .intro { margin-top: 20px; }
+      .status { margin-top: 26px; border-radius: 16px; }
+      .trust { margin-top: 42px; padding-top: 20px; }
+    }
+
+    @media (max-width: 380px) {
+      .page { padding-left: 16px; padding-right: 16px; }
+      .brand-wordmark { width: 106px; }
+      h1 { font-size: 36px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+      }
+    }
   </style>
 </head>
 <body>
-<main>
-  <div class="card">
-    <h1>Rebornly</h1>
-    <p id="normal">This domain is used for secure Rebornly account links and app deep links.</p>
-    <div id="fallback">
-      <p>A secure Rebornly account session is active. If you requested a password reset, continue below.</p>
-      <button id="continueRecovery" type="button">Continue password reset</button>
-    </div>
+  <div class="page">
+    <header aria-label="Rebornly">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <img src="/assets/branding/rebornly_logo.png" alt="">
+        </span>
+        <img class="brand-wordmark" src="/assets/branding/rebornly_wordmark.png" alt="Rebornly">
+      </div>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-logo" aria-hidden="true">
+          <img src="/assets/branding/rebornly_logo.png" alt="">
+        </div>
+        <img class="hero-wordmark" src="/assets/branding/rebornly_wordmark.png" alt="Rebornly">
+        <p class="eyebrow">Coming soon</p>
+        <h1 id="hero-title">A new home for the reborn community.</h1>
+        <p class="intro">Rebornly is a new community for reborn collectors, artists and creators — a thoughtful place to discover, share and connect around reborn artistry and collecting.</p>
+        <p class="status"><strong>Currently in development.</strong> More information will be available closer to launch.</p>
+        <p class="trust"><span class="trust-icon" aria-hidden="true">✓</span>rebornlyapp.com is also used for secure Rebornly account verification and recovery links.</p>
+
+        <div id="fallback" role="status" aria-live="polite">
+          <p>A secure Rebornly account session is active. If you requested a password reset, continue below.</p>
+          <button id="continueRecovery" type="button">Continue password reset</button>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>Rebornly © 2026</span>
+      <!-- Privacy, Terms and Contact links are intentionally omitted until approved destinations exist. -->
+    </footer>
   </div>
-</main>
-<script>
-(() => {
-  if (!window.__REBORNLY_AUTH_FALLBACK__) return;
-  document.getElementById('normal').style.display = 'none';
-  document.getElementById('fallback').style.display = 'block';
-  document.getElementById('continueRecovery').addEventListener('click', () => {
-    location.replace('/r/AUTH-06' + location.hash);
-  });
-})();
-</script>
+
+  <script>
+    (() => {
+      if (!window.__REBORNLY_AUTH_FALLBACK__) return;
+      const fallback = document.getElementById('fallback');
+      fallback.style.display = 'block';
+      document.getElementById('continueRecovery').addEventListener('click', () => {
+        location.replace('/r/AUTH-06' + location.hash);
+      });
+    })();
+  </script>
 </body>
 </html>
