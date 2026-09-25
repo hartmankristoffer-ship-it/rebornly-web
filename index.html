@@ -53,6 +53,38 @@
     #fallback button:hover { background:var(--rose-deep); }
     #fallback button:active { transform:translateY(1px); }
     #fallback button:focus-visible { outline:3px solid rgba(201,104,117,.28); outline-offset:3px; }
+    .beta-cta { display:none; margin:26px auto 0; padding:14px 26px; border:0; border-radius:999px; background:var(--rose); color:#fff; font:700 15px/1 var(--sans); cursor:pointer; box-shadow:0 10px 30px rgba(174,83,96,.22); transition:transform .18s ease,background-color .18s ease; }
+    .beta-cta:hover { background:var(--rose-deep); }
+    .beta-cta:active { transform:translateY(1px); }
+    .beta-cta:focus-visible, .beta-form button:focus-visible { outline:3px solid rgba(201,104,117,.28); outline-offset:3px; }
+    .beta-panel { width:min(100%,560px); margin:28px auto 0; padding:clamp(20px,4vw,30px); border:1px solid var(--border); border-radius:22px; background:var(--surface); box-shadow:0 18px 50px var(--shadow); text-align:left; }
+    .beta-panel[hidden] { display:none; }
+    .beta-panel h2 { margin:0 0 6px; font-family:var(--serif); font-size:26px; font-weight:400; letter-spacing:-.02em; }
+    .beta-panel .lead { margin:0 0 6px; color:var(--text-soft); font-size:14px; line-height:1.55; }
+    .beta-form label, .beta-form legend { display:block; margin:16px 0 6px; color:var(--text); font-size:14px; font-weight:650; }
+    .beta-form .optional { color:var(--text-faint); font-weight:400; }
+    .beta-form input[type=text], .beta-form input[type=email], .beta-form textarea { width:100%; padding:12px 14px; border:1px solid var(--border); border-radius:12px; background:#fff; color:var(--text); font:15px/1.4 var(--sans); }
+    .beta-form textarea { min-height:96px; resize:vertical; }
+    .beta-form input:focus, .beta-form textarea:focus { outline:none; border-color:var(--rose); box-shadow:0 0 0 3px rgba(201,104,117,.18); }
+    .beta-form fieldset { margin:16px 0 0; padding:0; border:0; }
+    .beta-form legend { margin:0 0 6px; padding:0; }
+    .beta-form .choices { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .beta-form .choice { display:flex; align-items:center; gap:8px; margin:0; padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:#fff; font-size:14px; font-weight:500; cursor:pointer; }
+    .beta-form .choice:has(input:checked) { border-color:var(--rose); background:var(--rose-wash); }
+    .beta-form .check { display:flex; align-items:flex-start; gap:10px; margin:14px 0 0; color:var(--text-soft); font-size:13px; font-weight:400; line-height:1.5; }
+    .beta-form .check input { margin-top:3px; accent-color:var(--rose); }
+    .beta-form input[type=radio] { accent-color:var(--rose); }
+    .beta-form a, footer a { color:var(--rose-deep); }
+    .beta-form .hp { position:absolute; left:-10000px; width:1px; height:1px; overflow:hidden; }
+    .beta-form button { width:100%; margin-top:20px; padding:14px 16px; border:0; border-radius:12px; background:var(--rose); color:#fff; font:700 15px/1 var(--sans); cursor:pointer; }
+    .beta-form button:hover { background:var(--rose-deep); }
+    .beta-form button[disabled] { opacity:.6; cursor:progress; }
+    .beta-status { min-height:22px; margin:14px 0 0; color:var(--text-soft); font-size:14px; line-height:1.5; }
+    .beta-status.error { color:var(--rose-deep); }
+    .beta-done h2 { margin-bottom:10px; }
+    footer .legal { display:none; margin-left:14px; }
+    footer .legal a { margin-left:10px; color:var(--text-faint); }
+    @media (max-width:480px) { .beta-form .choices { grid-template-columns:1fr; } footer { flex-direction:column; gap:6px; } footer .legal { margin-left:0; } }
     footer { display:flex; justify-content:center; align-items:center; min-height:34px; color:var(--text-faint); font-size:12px; letter-spacing:.01em; text-align:center; }
     @keyframes hero-in { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
     @media (max-width:640px) { .page { padding:max(24px,env(safe-area-inset-top)) 20px max(20px,env(safe-area-inset-bottom)); } main { padding-top:28px; padding-bottom:56px; } .brand-lockup { margin-bottom:30px; } .brand-lockup img { width:200px; } .eyebrow { margin-bottom:16px; font-size:11px; } .intro { margin-top:20px; } .status { margin-top:26px; border-radius:16px; } }
@@ -69,10 +101,41 @@
         <h1 id="hero-title">A new home for the reborn community.</h1>
         <p class="intro">Rebornly is a new community for reborn collectors, artists and sculptors — a thoughtful place to discover, share and connect around reborn artistry and collecting.</p>
         <p class="status"><strong>Currently in development.</strong> More information will be available closer to launch.</p>
+        <button id="betaOpen" class="beta-cta" type="button" aria-expanded="false" aria-controls="betaPanel">Join the beta</button>
+        <div id="betaPanel" class="beta-panel" hidden>
+          <form id="betaForm" class="beta-form" novalidate>
+            <h2>Join the Rebornly beta</h2>
+            <p class="lead">Leave your details and we will invite you when the beta opens.</p>
+            <label for="betaName">Name</label>
+            <input id="betaName" name="name" type="text" maxlength="80" autocomplete="name" required>
+            <label for="betaEmail">Email</label>
+            <input id="betaEmail" name="email" type="email" maxlength="254" autocomplete="email" required>
+            <fieldset>
+              <legend>How active are you in the reborn community?</legend>
+              <div class="choices">
+                <label class="choice"><input type="radio" name="activity_level" value="new_in_community" required> New in the community</label>
+                <label class="choice"><input type="radio" name="activity_level" value="active_sometimes"> Active sometimes</label>
+                <label class="choice"><input type="radio" name="activity_level" value="very_active"> Very active</label>
+                <label class="choice"><input type="radio" name="activity_level" value="artist_or_sculptor"> Artist or sculptor</label>
+              </div>
+            </fieldset>
+            <label for="betaMessage">Message <span class="optional">(optional)</span></label>
+            <textarea id="betaMessage" name="message" maxlength="1000" placeholder="Anything you would like to tell us"></textarea>
+            <div class="hp" aria-hidden="true"><label for="betaWebsite">Website</label><input id="betaWebsite" name="website" type="text" tabindex="-1" autocomplete="off"></div>
+            <label class="check"><input id="betaAdult" name="adult_confirmed" type="checkbox" required> I am 18 or older.</label>
+            <label class="check"><input id="betaConsent" name="privacy_consent" type="checkbox" required> <span>I agree that Rebornly may use my details to invite me to the beta and to tell me about the launch, as described in the <a href="/privacy/">Privacy Policy</a>. I can withdraw my consent at any time.</span></label>
+            <button id="betaSubmit" type="submit">Send</button>
+            <p id="betaStatus" class="beta-status" role="status" aria-live="polite"></p>
+          </form>
+          <div id="betaDone" class="beta-done" hidden tabindex="-1">
+            <h2>Thank you!</h2>
+            <p class="lead">You are on the list. We will email you when the beta opens.</p>
+          </div>
+        </div>
         <div id="fallback" role="status" aria-live="polite"><p>A secure Rebornly account session is active. If you requested a password reset, continue below.</p><button id="continueRecovery" type="button">Continue password reset</button></div>
       </section>
     </main>
-    <footer><span>Rebornly © 2026</span></footer>
+    <footer><span>Rebornly © 2026</span><span id="legalLinks" class="legal"><a href="/privacy/">Privacy Policy</a><a href="/cookies/">Cookie Policy</a><a href="/terms/">Terms of Service</a></span></footer>
   </div>
   <script>
     (() => {
@@ -81,6 +144,118 @@
       fallback.style.display = 'block';
       document.getElementById('continueRecovery').addEventListener('click', () => {
         location.replace('/r/AUTH-06' + location.hash);
+      });
+    })();
+  </script>
+  <script>
+    // WEB-01: the beta sign-up form and three anonymous counts. Nothing here sets
+    // a cookie or stores anything in the browser. Everything stays off -- no
+    // button, no footer links, no request -- until INTAKE_URL names the deployed
+    // website-intake function, which is set only once the approved Privacy Policy,
+    // Cookie Policy and Terms of Service are published under /privacy/, /cookies/
+    // and /terms/.
+    (() => {
+      const INTAKE_URL = '';
+      if (!INTAKE_URL || window.__REBORNLY_AUTH_FALLBACK__) return;
+
+      const send = (payload) =>
+        fetch(INTAKE_URL, {
+          method: 'POST',
+          // text/plain keeps this a simple request, with no preflight.
+          headers: { 'content-type': 'text/plain;charset=UTF-8' },
+          body: JSON.stringify(payload),
+          keepalive: true,
+          credentials: 'omit',
+          referrerPolicy: 'no-referrer',
+        });
+
+      // A visit through a shared link (rebornlyapp.com/?src=instagram) is counted
+      // once, and the source is then taken out of the address so a reload or a
+      // copied link does not count it again.
+      const params = new URLSearchParams(location.search);
+      const source = (params.get('src') || '').trim().toLowerCase();
+      if (params.has('src')) {
+        if (/^[a-z0-9][a-z0-9_-]{0,31}$/.test(source)) {
+          send({ type: 'event', event: 'link_visit', source }).catch(() => {});
+        }
+        params.delete('src');
+        const query = params.toString();
+        history.replaceState(null, '', location.pathname + (query ? '?' + query : '') + location.hash);
+      }
+
+      const openButton = document.getElementById('betaOpen');
+      const panel = document.getElementById('betaPanel');
+      const form = document.getElementById('betaForm');
+      const status = document.getElementById('betaStatus');
+      const submit = document.getElementById('betaSubmit');
+      const done = document.getElementById('betaDone');
+      openButton.style.display = 'inline-block';
+      document.getElementById('legalLinks').style.display = 'inline';
+
+      let opened = false;
+      openButton.addEventListener('click', () => {
+        const show = panel.hidden;
+        panel.hidden = !show;
+        openButton.setAttribute('aria-expanded', String(show));
+        if (!show) return;
+        document.getElementById('betaName').focus();
+        if (!opened) {
+          opened = true;
+          send({ type: 'event', event: 'beta_form_open' }).catch(() => {});
+        }
+      });
+
+      const say = (text, isError) => {
+        status.textContent = text;
+        status.classList.toggle('error', Boolean(isError));
+      };
+
+      const MESSAGES = {
+        invalid: 'Please check your details and try again.',
+        busy: 'Too many sign-ups right now. Please try again in a little while.',
+        closed: 'The beta list is not open yet. Please try again soon.',
+        unavailable: 'Something went wrong on our side. Please try again in a moment.',
+      };
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const data = new FormData(form);
+        const name = String(data.get('name') || '').trim();
+        const email = String(data.get('email') || '').trim();
+        const activity = data.get('activity_level');
+        const message = String(data.get('message') || '').trim();
+        if (!name) return say('Please enter your name.', true);
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return say('Please enter a valid email address.', true);
+        if (!activity) return say('Please choose how active you are in the community.', true);
+        if (!document.getElementById('betaAdult').checked) return say('You need to be 18 or older to join the beta.', true);
+        if (!document.getElementById('betaConsent').checked) return say('Please agree to the Privacy Policy to sign up.', true);
+
+        submit.disabled = true;
+        say('Sending…');
+        let state = 'unavailable';
+        try {
+          const response = await send({
+            type: 'signup',
+            name,
+            email,
+            activity_level: String(activity),
+            message: message || null,
+            adult_confirmed: true,
+            privacy_consent: true,
+            website: String(data.get('website') || ''),
+          });
+          state = ((await response.json()) || {}).state || 'unavailable';
+        } catch {
+          state = 'unavailable';
+        }
+        submit.disabled = false;
+        if (state === 'accepted') {
+          form.hidden = true;
+          done.hidden = false;
+          done.focus();
+          return;
+        }
+        say(MESSAGES[state] || MESSAGES.unavailable, true);
       });
     })();
   </script>
