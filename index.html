@@ -87,15 +87,16 @@
     /* Wide: the words on the warm band, the picture out to the right edge.
        Narrow: the photograph leads and the words follow under it. */
     .hero { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.04fr);
-            grid-template-areas:"title pic" "copy pic"; align-content:center;
-            min-height:clamp(230px,32svh,380px); padding-block:clamp(14px,2svh,36px);
+            grid-template-areas:". pic" "title pic" "copy pic" ". pic";
+            grid-template-rows:1fr auto auto 1fr;
+            min-height:clamp(230px,32svh,380px);
             background:var(--wash); }
     .hero h1 { grid-area:title; box-sizing:content-box; margin:0;
-               padding:0 clamp(24px,4vw,56px) 0 var(--hero-left);
+               padding:clamp(14px,2svh,36px) clamp(24px,4vw,56px) 0 var(--hero-left);
                font-size:clamp(30px,min(3.8vw,5.2svh),46px); line-height:1.08;
                letter-spacing:-.02em; max-width:17ch; }
     .hero .copy { grid-area:copy; display:flex; flex-direction:column;
-                  padding:0 clamp(24px,4vw,56px) 0 var(--hero-left); }
+                  padding:0 clamp(24px,4vw,56px) clamp(14px,2svh,36px) var(--hero-left); }
     .hero .lead { margin:clamp(12px,1.8svh,20px) 0 0; max-width:44ch;
                   font-size:clamp(15px,1.2vw,17px); line-height:1.55; }
     .hero .button { align-self:flex-start; margin-top:clamp(16px,2.2svh,26px); }
@@ -151,7 +152,7 @@
 
     /* --- narrow: the photograph leads ------------------------------------- */
     @media (max-width:760px) {
-      .hero { grid-template-columns:1fr; grid-template-areas:"title" "pic" "copy";
+      .hero { grid-template-columns:1fr; grid-template-rows:auto; grid-template-areas:"title" "pic" "copy";
               min-height:0; padding-block:0; background:var(--ivory); }
       .hero-figure { height:clamp(280px,52svh,520px); }
       .hero-figure img { position:static; width:100%; height:100%; object-position:52% 30%; }
