@@ -52,7 +52,8 @@
     * { box-sizing:border-box; }
     html { background:var(--ivory); scroll-behavior:smooth; }
     body {
-      margin:0; min-width:320px; background:var(--ivory); color:var(--body);
+      margin:0; min-width:320px; min-height:100svh; display:flex; flex-direction:column;
+      background:var(--ivory); color:var(--body);
       font-family:var(--sans); font-size:16px; line-height:1.6;
       -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
     }
@@ -60,60 +61,64 @@
     a { color:inherit; }
     img { display:block; max-width:100%; }
     .shell { width:min(100%,var(--page)); margin:0 auto; padding-inline:var(--gutter); }
+    /* The page fills the window; whatever is left over goes to the hero. */
+    main { flex:1 0 auto; display:flex; flex-direction:column; }
+    .hero { flex:1 1 auto; }
 
     /* --- the bar ---------------------------------------------------------- */
     .masthead { position:sticky; top:0; z-index:10; background:rgba(248,245,240,.92); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border-bottom:1px solid transparent; }
-    .masthead .shell { display:flex; align-items:center; min-height:clamp(64px,7vw,84px); padding-block:10px; }
-    .wordmark img { width:clamp(130px,14vw,178px); height:auto; mix-blend-mode:multiply; }
+    .masthead .shell { display:flex; align-items:center; min-height:clamp(44px,6svh,66px); padding-block:6px; }
+    .wordmark img { width:clamp(104px,min(11vw,16svh),150px); height:auto; mix-blend-mode:multiply; }
 
     /* --- buttons ---------------------------------------------------------- */
     .button {
-      display:inline-flex; align-items:center; gap:10px; padding:13px 24px; border:0; border-radius:999px;
-      background:var(--sage); color:#fff; font:600 15px/1 var(--sans); text-decoration:none; cursor:pointer;
+      display:inline-flex; align-items:center; gap:10px; padding:clamp(9px,1.5svh,11px) 22px; border:0; border-radius:999px;
+      background:var(--sage); color:#fff; font:600 clamp(14px,1.9svh,15px)/1 var(--sans); text-decoration:none; cursor:pointer;
       transition:background-color .18s ease, transform .18s ease;
     }
     .button:hover { background:var(--sage-deep); }
     .button:active { transform:translateY(1px); }
     .button:focus-visible { outline:3px solid rgba(106,117,105,.35); outline-offset:3px; }
-    .button--large { padding:16px 30px; font-size:16px; }
+    .button--large { padding:clamp(11px,1.8svh,15px) 28px; font-size:15px; }
     .button .arrow { width:16px; height:16px; flex:none; }
 
     /* --- hero ------------------------------------------------------------- */
     /* Two columns across the whole window: the words keep the page's left
        margin, the picture runs out to the right edge, as the reference has it. */
-    .hero { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.04fr); align-items:stretch; min-height:clamp(430px,46vw,620px); background:var(--wash); }
-    .hero .copy { display:flex; flex-direction:column; justify-content:center; padding:clamp(40px,6vw,88px) clamp(24px,4vw,56px) clamp(40px,6vw,88px) max(var(--gutter),calc((100vw - var(--page)) / 2 + var(--gutter))); }
-    .hero h1 { font-size:clamp(38px,5.4vw,66px); line-height:1.08; letter-spacing:-.02em; max-width:12ch; }
-    .hero p { margin:clamp(18px,2.4vw,28px) 0 0; max-width:42ch; font-size:clamp(16px,1.5vw,19px); line-height:1.62; }
-    .hero .button { align-self:flex-start; margin-top:clamp(24px,3vw,36px); }
-    .note { margin:clamp(16px,2vw,22px) 0 0; color:var(--muted); font-size:12px; letter-spacing:.18em; text-transform:uppercase; }
+    .hero { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.04fr); align-items:stretch; min-height:clamp(240px,36svh,400px); background:var(--wash); }
+    .hero .copy { display:flex; flex-direction:column; justify-content:center; padding:clamp(18px,2.7svh,44px) clamp(24px,4vw,56px) clamp(18px,2.7svh,44px) max(var(--gutter),calc((100vw - var(--page)) / 2 + var(--gutter))); }
+    .hero h1 { font-size:clamp(30px,min(4vw,5.4svh),48px); line-height:1.08; letter-spacing:-.02em; max-width:18ch; }
+    .hero p { margin:clamp(9px,1.5svh,18px) 0 0; max-width:44ch; font-size:clamp(14px,min(1.25vw,2.2svh),17px); line-height:1.55; }
+    .hero .button { align-self:flex-start; margin-top:clamp(14px,2.2svh,26px); }
+    .note { margin:clamp(8px,1.3svh,16px) 0 0; color:var(--muted); font-size:clamp(11px,1.6svh,12px); letter-spacing:.18em; text-transform:uppercase; }
     .hero-figure { position:relative; margin:0; overflow:hidden; }
-    .hero-figure img { width:100%; height:100%; object-fit:cover; object-position:58% 38%; }
+    .hero-figure img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:64% 42%; }
     /* The picture melts into the warm band on its left, as in the reference. */
     .hero-figure::after { content:""; position:absolute; inset:0; pointer-events:none; background:linear-gradient(90deg,var(--wash) 0%,rgba(242,236,230,.55) 14%,rgba(242,236,230,0) 34%); }
 
     /* --- what it is ------------------------------------------------------- */
     .values { background:var(--ivory); }
-    .values .shell { padding-block:clamp(56px,8vw,104px); display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:clamp(28px,5vw,64px); }
-    .value { text-align:center; }
-    .value .icon { width:72px; height:72px; margin:0 auto 22px; display:grid; place-items:center; border-radius:50%; background:var(--rose-wash); }
-    .value .icon svg { width:30px; height:30px; stroke:var(--ink); fill:none; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
-    .value h2 { font-size:clamp(20px,2.2vw,26px); line-height:1.25; min-height:2.5em; }
-    .value p { margin:14px auto 0; max-width:30ch; font-size:15px; line-height:1.65; }
+    .values .shell { padding-block:clamp(18px,3svh,44px); display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); grid-template-rows:repeat(3,auto); gap:0 clamp(18px,3vw,48px); }
+    .value { text-align:center; display:grid; grid-row:span 3; grid-template-rows:subgrid; align-content:start; }
+    .value .icon { width:clamp(34px,4.6svh,52px); aspect-ratio:1; margin:0 auto clamp(7px,1.2svh,14px); display:grid; place-items:center; border-radius:50%; background:var(--rose-wash); }
+    .value .icon svg { width:clamp(18px,2.2svh,23px); height:auto; stroke:var(--ink); fill:none; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
+    .value h2 { font-size:clamp(16px,min(1.6vw,2.7svh),21px); line-height:1.25; align-self:start; }
+    .value p { margin:clamp(4px,0.8svh,10px) auto 0; max-width:46ch; font-size:clamp(13px,1.85svh,14px); line-height:1.5; }
 
     /* --- the waitlist ----------------------------------------------------- */
     .beta { position:relative; overflow:hidden; background:var(--wash-soft); }
-    .beta .shell { position:relative; z-index:1; padding-block:clamp(56px,8vw,104px); text-align:center; }
-    .beta h2 { font-size:clamp(28px,3.8vw,44px); line-height:1.16; letter-spacing:-.015em; max-width:18ch; margin-inline:auto; }
-    .beta .lead { margin:18px auto 0; max-width:40ch; font-size:clamp(15px,1.4vw,17px); }
-    .signup { margin:clamp(26px,3vw,38px) auto 0; display:flex; flex-wrap:wrap; justify-content:center; gap:10px; width:min(100%,520px); }
+    .beta .shell { position:relative; z-index:1; padding-block:clamp(18px,2.7svh,42px); text-align:center; }
+    .beta h2 { font-size:clamp(22px,min(2.5vw,3.5svh),32px); line-height:1.16; letter-spacing:-.015em; max-width:26ch; margin-inline:auto; }
+    .beta .lead { margin:clamp(5px,0.9svh,12px) auto 0; max-width:40ch; font-size:clamp(13.5px,2svh,15px); }
+    .signup { margin:clamp(12px,1.8svh,24px) auto 0; display:flex; flex-wrap:wrap; justify-content:center; gap:10px; width:min(100%,520px); }
     .signup input {
-      flex:1 1 240px; min-width:0; padding:14px 20px; border:1px solid var(--line); border-radius:999px;
-      background:#fffdfb; color:var(--ink); font:400 15px/1.2 var(--sans);
+      flex:1 1 240px; min-width:0; padding:clamp(9px,1.5svh,13px) 20px; border:1px solid var(--line); border-radius:999px;
+      background:#fffdfb; color:var(--ink); font:400 clamp(14px,1.9svh,15px)/1.2 var(--sans);
     }
     .signup input::placeholder { color:#9a948c; }
     .signup input:focus-visible { outline:3px solid rgba(106,117,105,.28); outline-offset:2px; border-color:var(--sage); }
-    .beta .small { margin:16px auto 0; max-width:44ch; color:var(--muted); font-size:13px; }
+    .beta .small { margin:clamp(5px,0.9svh,12px) auto 0; max-width:52ch; color:var(--muted); font-size:clamp(11.5px,1.7svh,12.5px); }
+    #signup-status { position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0; }
     .beta .leaf { position:absolute; right:clamp(-30px,2vw,60px); bottom:clamp(40px,8vw,90px); width:clamp(90px,12vw,150px); stroke:#cdbfae; fill:none; stroke-width:1.2; opacity:.55; z-index:0; }
     .beta .wave { position:absolute; inset:auto 0 0; width:100%; height:auto; display:block; z-index:0; }
 
@@ -124,28 +129,38 @@
 
     /* --- foot ------------------------------------------------------------- */
     footer { background:var(--ivory); }
-    footer .shell { padding-block:clamp(34px,5vw,54px); display:grid; justify-items:center; gap:14px; text-align:center; }
-    footer img { width:clamp(120px,13vw,152px); height:auto; mix-blend-mode:multiply; }
-    footer .small { margin:0; color:var(--muted); font-size:12px; letter-spacing:.18em; text-transform:uppercase; }
-    footer .copyright { margin:0; color:var(--muted); font-size:12px; letter-spacing:0; text-transform:none; }
+    footer .shell { padding-block:clamp(10px,1.4svh,20px); display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:8px 16px; text-align:center; }
+    footer img { width:clamp(82px,min(8vw,13svh),112px); height:auto; mix-blend-mode:multiply; }
+    footer .small { margin:0; color:var(--muted); font-size:clamp(11px,1.6svh,12px); letter-spacing:.18em; text-transform:uppercase; }
+    footer .copyright { margin:0; color:var(--muted); font-size:clamp(11px,1.6svh,12px); letter-spacing:0; text-transform:none; }
 
     /* --- tablet ----------------------------------------------------------- */
-    @media (max-width:900px) {
+    @media (max-width:760px) {
       .hero { grid-template-columns:1fr; min-height:0; }
       .hero .copy { padding:clamp(30px,5vw,52px) var(--gutter); }
       .hero h1 { max-width:18ch; }
       .hero-figure { order:2; }
-      .hero-figure img { aspect-ratio:4/3; height:auto; object-position:60% 34%; }
+      .hero-figure img { position:static; aspect-ratio:16/10; height:auto; object-position:62% 40%; }
       .hero-figure::after { background:linear-gradient(0deg,rgba(242,236,230,0) 70%,var(--wash) 100%); }
-      .values .shell { grid-template-columns:1fr; gap:clamp(34px,6vw,48px); }
-      .value h2 { min-height:0; }
+      .values .shell { grid-template-columns:1fr; grid-template-rows:none; gap:clamp(22px,4vw,34px); }
+      .value { display:block; grid-row:auto; }
       .value p { max-width:36ch; }
     }
     /* --- phone ------------------------------------------------------------ */
     @media (max-width:560px) {
-      .wordmark img { width:124px; }
-      .hero .copy { padding:28px var(--gutter) 34px; }
-      .hero h1 { font-size:clamp(32px,9vw,40px); max-width:none; }
+      .wordmark img { width:118px; }
+      .hero .copy { padding:22px var(--gutter) 26px; }
+      .hero h1 { font-size:clamp(30px,8.4vw,38px); max-width:none; }
+      .hero-figure img { aspect-ratio:2.2/1; }
+      /* On a phone each block is one row: mark, title, one line. */
+      .values .shell { gap:16px; padding-block:20px; }
+      .value { display:grid; grid-template-columns:auto minmax(0,1fr); grid-template-rows:auto auto; align-items:center;
+               column-gap:14px; text-align:left; }
+      .value .icon { grid-row:span 2; width:42px; margin:0; }
+      .value h2 { align-self:end; }
+      .value p { align-self:start; margin:2px 0 0; max-width:none; }
+      .beta .shell { padding-block:22px; }
+      .beta h2 { font-size:clamp(21px,6.2vw,27px); max-width:none; }
       .signup { flex-direction:column; }
       .signup input { flex:0 0 auto; width:100%; }
       .signup .button { justify-content:center; }
@@ -180,7 +195,7 @@
       </div>
 
       <figure class="hero-figure">
-        <img src="/assets/images/hero-reborn.jpg" alt="A reborn doll asleep in a knitted blanket, holding a small plush rabbit." width="1086" height="1130" fetchpriority="high" decoding="async">
+        <img src="/assets/images/hero.jpg" alt="A reborn baby asleep in a cream romper, next to a teddy bear on a patterned blanket." width="1440" height="915" fetchpriority="high" decoding="async">
       </figure>
     </section>
 
@@ -191,21 +206,21 @@
             <svg viewBox="0 0 24 24" focusable="false"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="m4 17 5-5 4.5 4.5L17 13l3 3"/></svg>
           </div>
           <h2>Share &amp; discover</h2>
-          <p>Show the reborns you love, and find the artists, sculptors and dolls behind them.</p>
+          <p>The reborns you love, and their artists.</p>
         </article>
         <article class="value">
           <div class="icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" focusable="false"><circle cx="9" cy="8.5" r="3.2"/><path d="M3.4 19a5.8 5.8 0 0 1 11.2 0"/><circle cx="17" cy="9.5" r="2.4"/><path d="M15.6 14.4A5 5 0 0 1 21 19"/></svg>
           </div>
           <h2>Connect with the community</h2>
-          <p>Meet collectors, artists and sculptors who share your passion, from around the world.</p>
+          <p>Collectors and artists, from around the world.</p>
         </article>
         <article class="value">
           <div class="icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" focusable="false"><path d="M6 3.5h9.5L19 7v13.5H6z"/><path d="M15.2 3.6V7H19"/><path d="M9 11.5h7M9 15h5"/></svg>
           </div>
           <h2>Remember every story</h2>
-          <p>Keep each doll's story in one place: where she came from, who made her, and the moments since.</p>
+          <p>Where she came from, and every moment since.</p>
         </article>
       </div>
     </section>
@@ -223,7 +238,7 @@
             <svg class="arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15"/><path d="m13 6 6 6-6 6"/></svg>
           </button>
         </form>
-        <p class="small" id="signup-note">The waitlist is not open yet, so nothing is sent or stored. The address here goes nowhere until it is.</p>
+        <p class="small" id="signup-note">The waitlist is not open yet, so nothing is sent or stored.</p>
         <p class="small" id="signup-status" role="status" aria-live="polite"></p>
       </div>
     </section>
@@ -241,9 +256,12 @@
     (() => {
       const form = document.getElementById('signup');
       const status = document.getElementById('signup-status');
+      const note = document.getElementById('signup-note');
       form.addEventListener('submit', (event) => {
         event.preventDefault();
-        status.textContent = 'The waitlist is not open yet. Nothing was sent, and nothing was stored.';
+        const said = 'The waitlist is not open yet, so nothing was sent or stored.';
+        note.textContent = said;
+        status.textContent = said;
       });
 
       if (!window.__REBORNLY_AUTH_FALLBACK__) return;
