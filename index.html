@@ -34,13 +34,13 @@
     :root {
       color-scheme: light;
       --ivory:#f8f5f0;          /* the page */
-      --wash:#f2ece6;           /* the hero's warm band */
-      --wash-soft:#f6f1ec;      /* the quiet band under the value blocks */
+      --wash:#f2ece6;           /* the hero's warm band on wide screens */
+      --wash-soft:#f6f1ec;      /* the quiet band the waitlist sits on */
       --rose-wash:#f4e8e4;      /* the round icon fills */
       --ink:#22302a;            /* headings, 12.7:1 on the ivory */
       --body:#5e625c;           /* body text, 5.7:1 */
-      --muted:#6e7269;          /* small print */
-      --sage:#6a7569;           /* the call to action, 4.6:1 with white */
+      --muted:#6e7269;          /* small print, 4.6:1 */
+      --sage:#6a7569;           /* the call to action, 4.8:1 with white */
       --sage-deep:#5b6658;
       --line:#e7ded6;
       --shadow:rgba(90,72,56,.10);
@@ -66,122 +66,115 @@
     main { flex:1 0 auto; display:flex; flex-direction:column; }
     .hero { flex:1 1 auto; }
 
-    /* --- the bar ---------------------------------------------------------- */
-    .masthead { position:sticky; top:0; z-index:10; background:rgba(242,236,230,.94); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
-    .masthead .shell { display:flex; align-items:center; justify-content:center; min-height:clamp(52px,7svh,76px); padding-block:8px; }
-    .wordmark img { width:clamp(132px,min(14vw,20svh),186px); height:auto; mix-blend-mode:multiply; }
+    /* --- the bar: small, quiet, the same colour as what sits under it ------ */
+    .masthead { background:var(--ivory); }
+    .masthead .shell { display:flex; align-items:center; justify-content:center;
+                       min-height:clamp(62px,7.2svh,74px); padding-block:8px; }
+    .wordmark img { width:clamp(112px,9vw,132px); height:auto; mix-blend-mode:multiply; }
 
     /* --- buttons ---------------------------------------------------------- */
     .button {
-      display:inline-flex; align-items:center; gap:10px; padding:clamp(9px,1.5svh,11px) 22px; border:0; border-radius:999px;
-      background:var(--sage); color:#fff; font:600 clamp(14px,1.9svh,15px)/1 var(--sans); text-decoration:none; cursor:pointer;
+      display:inline-flex; align-items:center; gap:10px; padding:13px 26px; border:0; border-radius:999px;
+      background:var(--sage); color:#fff; font:600 15px/1 var(--sans); text-decoration:none; cursor:pointer;
       transition:background-color .18s ease, transform .18s ease;
     }
     .button:hover { background:var(--sage-deep); }
     .button:active { transform:translateY(1px); }
     .button:focus-visible { outline:3px solid rgba(106,117,105,.35); outline-offset:3px; }
-    .button--large { padding:clamp(11px,1.8svh,15px) 28px; font-size:15px; }
     .button .arrow { width:16px; height:16px; flex:none; }
 
     /* --- hero ------------------------------------------------------------- */
-    /* Two columns across the whole window: the words keep the page's left
-       margin, the picture runs out to the right edge, as the reference has it. */
+    /* Wide: the words on the warm band, the picture out to the right edge.
+       Narrow: the photograph leads and the words follow under it. */
     .hero { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.04fr);
             grid-template-areas:"title pic" "copy pic"; align-content:center;
-            min-height:clamp(240px,36svh,400px); padding-block:clamp(18px,2.7svh,44px);
+            min-height:clamp(230px,32svh,380px); padding-block:clamp(14px,2svh,36px);
             background:var(--wash); }
-    .hero .copy { grid-area:copy; display:flex; flex-direction:column; padding:0 clamp(24px,4vw,56px) 0 var(--hero-left); }
-    .hero h1 { grid-area:title; box-sizing:content-box; margin:0; padding:0 clamp(24px,4vw,56px) 0 var(--hero-left);
-               font-size:clamp(30px,min(4vw,5.4svh),48px); line-height:1.08; letter-spacing:-.02em; max-width:18ch; }
-    .hero p { margin:clamp(9px,1.5svh,18px) 0 0; max-width:44ch; font-size:clamp(14px,min(1.25vw,2.2svh),17px); line-height:1.55; }
-    .hero .button { align-self:flex-start; margin-top:clamp(14px,2.2svh,26px); }
-    .note { margin:clamp(8px,1.3svh,16px) 0 0; padding-left:28px; color:var(--muted); font-size:13px; letter-spacing:.01em; }
+    .hero h1 { grid-area:title; box-sizing:content-box; margin:0;
+               padding:0 clamp(24px,4vw,56px) 0 var(--hero-left);
+               font-size:clamp(30px,min(3.8vw,5.2svh),46px); line-height:1.08;
+               letter-spacing:-.02em; max-width:17ch; }
+    .hero .copy { grid-area:copy; display:flex; flex-direction:column;
+                  padding:0 clamp(24px,4vw,56px) 0 var(--hero-left); }
+    .hero .lead { margin:clamp(12px,1.8svh,20px) 0 0; max-width:44ch;
+                  font-size:clamp(15px,1.2vw,17px); line-height:1.55; }
+    .hero .button { align-self:flex-start; margin-top:clamp(16px,2.2svh,26px); }
+    /* The small line starts where the button's label starts. */
+    .note { margin:clamp(10px,1.5svh,16px) 0 0; padding-left:26px; color:var(--muted);
+            font-size:11.5px; letter-spacing:.16em; text-transform:uppercase; }
     .hero-figure { grid-area:pic; position:relative; margin:0; overflow:hidden; }
-    .hero-figure img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:64% 42%; }
-    /* The picture melts into the warm band on its left, as in the reference. */
-    .hero-figure::after { content:""; position:absolute; inset:0; pointer-events:none; background:linear-gradient(90deg,var(--wash) 0%,rgba(242,236,230,.55) 14%,rgba(242,236,230,0) 34%); }
+    .hero-figure img { position:absolute; inset:0; width:100%; height:100%;
+                       object-fit:cover; object-position:64% 42%; }
+    /* The picture melts into the warm band on its left. */
+    .hero-figure::after { content:""; position:absolute; inset:0; pointer-events:none;
+      background:linear-gradient(90deg,var(--wash) 0%,rgba(242,236,230,.55) 14%,rgba(242,236,230,0) 34%); }
 
     /* --- what it is ------------------------------------------------------- */
     .values { background:var(--ivory); }
-    .values .shell { padding-block:clamp(18px,3svh,44px); display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); grid-template-rows:repeat(3,auto); gap:0 clamp(18px,3vw,48px); }
+    .values .shell { padding-block:clamp(22px,3.4svh,50px); display:grid;
+                     grid-template-columns:repeat(3,minmax(0,1fr)); grid-template-rows:repeat(3,auto);
+                     gap:0 clamp(18px,3vw,48px); }
+    /* The three share their rows, so the lines meet even when a title wraps. */
     .value { text-align:center; display:grid; grid-row:span 3; grid-template-rows:subgrid; align-content:start; }
-    .value .icon { width:clamp(34px,4.6svh,52px); aspect-ratio:1; margin:0 auto clamp(7px,1.2svh,14px); display:grid; place-items:center; border-radius:50%; background:var(--rose-wash); }
-    .value .icon svg { width:clamp(18px,2.2svh,23px); height:auto; stroke:var(--ink); fill:none; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
-    .value h2 { font-size:clamp(16px,min(1.6vw,2.7svh),21px); line-height:1.25; align-self:start; }
-    .value p { margin:clamp(4px,0.8svh,10px) auto 0; max-width:46ch; font-size:clamp(13px,1.85svh,14px); line-height:1.5; }
+    .value .icon { width:clamp(40px,4.4svh,48px); aspect-ratio:1; margin:0 auto 10px;
+                   display:grid; place-items:center; border-radius:50%; background:var(--rose-wash); }
+    .value .icon svg { width:52%; height:auto; stroke:var(--ink); fill:none;
+                       stroke-width:1.25; stroke-linecap:round; stroke-linejoin:round; }
+    .value h2 { font-size:clamp(19px,1.7vw,23px); line-height:1.24; align-self:start; }
+    .value p { margin:6px auto 0; max-width:34ch; font-size:15px; line-height:1.55; }
 
     /* --- the waitlist ----------------------------------------------------- */
-    .beta { position:relative; overflow:hidden; background:var(--wash-soft); }
-    .beta .shell { position:relative; z-index:1; padding-block:clamp(18px,2.7svh,42px); text-align:center; }
-    .beta h2 { font-size:clamp(22px,min(2.5vw,3.5svh),32px); line-height:1.16; letter-spacing:-.015em; max-width:26ch; margin-inline:auto; }
-    .beta .lead { margin:clamp(5px,0.9svh,12px) auto 0; max-width:40ch; font-size:clamp(13.5px,2svh,15px); }
-    .signup { margin:clamp(12px,1.8svh,24px) auto 0; display:flex; flex-wrap:wrap; justify-content:center; gap:10px; width:min(100%,520px); }
-    .signup input {
-      flex:1 1 240px; min-width:0; padding:clamp(9px,1.5svh,13px) 20px; border:1px solid var(--line); border-radius:999px;
-      background:#fffdfb; color:var(--ink); font:400 clamp(14px,1.9svh,15px)/1.2 var(--sans);
-    }
-    .signup input::placeholder { color:#9a948c; }
-    .signup input:focus-visible { outline:3px solid rgba(106,117,105,.28); outline-offset:2px; border-color:var(--sage); }
-    .beta .small { margin:clamp(5px,0.9svh,12px) auto 0; max-width:52ch; color:var(--muted); font-size:clamp(11.5px,1.7svh,12.5px); }
-    #signup-status:empty { display:none; }
-    .beta .leaf { position:absolute; right:clamp(-30px,2vw,60px); bottom:clamp(40px,8vw,90px); width:clamp(90px,12vw,150px); stroke:#cdbfae; fill:none; stroke-width:1.2; opacity:.55; z-index:0; }
-    .beta .wave { position:absolute; inset:auto 0 0; width:100%; height:auto; display:block; z-index:0; }
+    .beta { background:var(--wash-soft); }
+    .beta .shell { padding-block:clamp(22px,3.1svh,50px); display:grid; justify-items:center; text-align:center; }
+    .beta h2 { font-size:clamp(22px,min(2.4vw,3.3svh),32px); line-height:1.16;
+               letter-spacing:-.015em; max-width:22ch; }
+    .beta .lead { margin:clamp(6px,1svh,12px) 0 0; max-width:40ch; font-size:clamp(15px,1.2vw,17px); }
+    .beta .button { margin-top:clamp(14px,1.9svh,22px); }
 
     /* --- the auth fallback the app relies on ------------------------------ */
-    #fallback { display:none; margin:clamp(24px,3vw,32px) 0 0; padding:18px; border:1px solid var(--line); border-radius:18px; background:#fffdfb; box-shadow:0 18px 50px var(--shadow); }
+    #fallback { display:none; margin:clamp(20px,3vw,28px) 0 0; padding:18px; border:1px solid var(--line);
+                border-radius:18px; background:#fffdfb; box-shadow:0 18px 50px var(--shadow); max-width:44ch; }
     #fallback p { margin:0; font-size:14px; line-height:1.55; }
     #fallback button { width:100%; margin-top:14px; }
 
     /* --- foot ------------------------------------------------------------- */
     footer { background:var(--ivory); }
-    footer .shell { padding-block:clamp(12px,1.8svh,24px); display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:6px 22px; text-align:center; }
-    .footer-links { display:flex; flex-wrap:wrap; justify-content:center; gap:6px 22px; }
-    .footer-links a { color:var(--muted); font-size:13px; text-decoration:none; border-bottom:1px solid transparent; padding-bottom:1px; }
-    .footer-links a:hover, .footer-links a:focus-visible { color:var(--ink); border-bottom-color:var(--ink); }
+    footer .shell { padding-block:clamp(12px,1.6svh,22px); display:flex; flex-wrap:wrap;
+                    align-items:center; justify-content:center; gap:6px clamp(14px,2vw,26px); text-align:center; }
+    footer .wordmark img { width:clamp(92px,7vw,104px); }
+    .footer-links { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:4px 14px; }
+    .footer-links a { color:var(--muted); font-size:13px; text-decoration:none; }
+    .footer-links a:hover, .footer-links a:focus-visible { color:var(--ink); text-decoration:underline; }
     .footer-links a:focus-visible { outline:3px solid rgba(106,117,105,.30); outline-offset:4px; border-radius:2px; }
-    footer .copyright { margin:0; color:var(--muted); font-size:clamp(11px,1.6svh,12px); letter-spacing:0; text-transform:none; }
+    .footer-links span { color:var(--line); }
+    footer .copyright { margin:0; color:var(--muted); font-size:12px; }
 
-    /* --- tablet ----------------------------------------------------------- */
+    /* --- narrow: the photograph leads ------------------------------------- */
     @media (max-width:760px) {
-      /* The picture comes first, right under the bar, and the heading lies on
-         it. Everything else follows below on the page's own ground. */
-      .hero { grid-template-columns:1fr; grid-template-areas:"pic" "copy";
+      .hero { grid-template-columns:1fr; grid-template-areas:"title" "pic" "copy";
               min-height:0; padding-block:0; background:var(--ivory); }
-      /* The bar stands on the page itself and the picture rises a little
-         way behind the wordmark, so there is no edge under it at all. */
-      .masthead { position:static; background:transparent; backdrop-filter:none; -webkit-backdrop-filter:none; }
-      .hero { margin-top:calc(-1 * clamp(16px,4.5vw,30px)); }
-      .hero-figure img { position:static; width:100%; height:auto;
-                         aspect-ratio:4/5; object-fit:cover; object-position:50% 32%; }
-      .hero h1 { grid-area:pic; align-self:end; z-index:1; max-width:15ch;
-                 padding:0 var(--gutter) clamp(20px,5.5vw,34px); }
-      /* It fades into the bar above and lightens under the words. */
+      .hero-figure { height:clamp(280px,52svh,520px); }
+      .hero-figure img { position:static; width:100%; height:100%; object-position:52% 30%; }
+      /* It settles into the page instead of stopping at a line. */
       .hero-figure::after { background:
-          linear-gradient(180deg,var(--ivory) 0%,rgba(248,245,240,.92) 6%,rgba(248,245,240,0) 20%),
-          linear-gradient(0deg,var(--ivory) 0%,rgba(248,245,240,.88) 17%,
-                          rgba(248,245,240,.42) 38%,rgba(248,245,240,0) 60%); }
-      .hero .copy { padding:clamp(20px,5vw,30px) var(--gutter) clamp(28px,7vw,42px); }
-      .values .shell { grid-template-columns:1fr; grid-template-rows:none; gap:clamp(22px,4vw,34px); }
+          linear-gradient(180deg,var(--ivory) 0%,rgba(248,245,240,0) 9%),
+          linear-gradient(0deg,var(--ivory) 0%,rgba(248,245,240,.55) 9%,rgba(248,245,240,0) 26%); }
+      .hero h1 { padding:clamp(16px,4vw,26px) var(--gutter) clamp(16px,4vw,24px);
+                 font-size:clamp(31px,9.8vw,42px); line-height:1.06; max-width:none; text-wrap:pretty; }
+      .hero .copy { padding:clamp(18px,4.5vw,26px) var(--gutter) clamp(30px,7vw,44px); }
+      .hero .lead { margin-top:0; max-width:38ch; font-size:17px; line-height:1.5; }
+      .hero .button { margin-top:22px; }
+      .note { margin-top:16px; }
+      .values .shell { grid-template-columns:1fr; grid-template-rows:none;
+                       padding-block:clamp(26px,6vw,38px); gap:clamp(22px,5.4vw,30px); }
       .value { display:block; grid-row:auto; }
-      .value p { max-width:36ch; }
-    }
-    /* --- phone ------------------------------------------------------------ */
-    /* A phone scrolls, so the hero keeps the desktop's air: the words on the
-       warm band, then the picture whole and unveiled. */
-    @media (max-width:560px) {
-      .wordmark img { width:150px; }
-      .hero h1 { font-size:clamp(28px,7.8vw,36px); max-width:17ch; }
-      .hero p { max-width:36ch; }
-      .hero .button { margin-top:24px; }
-      .note { margin-top:18px; }
-      .values .shell { padding-block:clamp(30px,7vw,46px); gap:clamp(26px,6vw,36px); }
-      .value p { max-width:32ch; }
-      .beta .shell { padding-block:clamp(34px,8vw,50px); }
-      .beta h2 { font-size:clamp(24px,7vw,31px); max-width:16ch; }
-      .signup { flex-direction:column; gap:10px; }
-      .signup input { flex:0 0 auto; width:100%; }
-      .signup .button { justify-content:center; }
-      footer .shell { padding-block:24px; }
+      .value .icon { width:44px; margin-bottom:10px; }
+      .value h2 { font-size:clamp(24px,7.2vw,28px); }
+      .value p { margin-top:8px; max-width:34ch; font-size:17px; line-height:1.5; }
+      .beta .shell { padding-block:clamp(34px,8vw,46px); }
+      .beta h2 { font-size:clamp(28px,8.6vw,36px); max-width:16ch; }
+      .beta .lead { font-size:17px; }
+      footer .shell { display:grid; justify-items:center; padding-block:22px; gap:10px; }
     }
     @media (prefers-reduced-motion:reduce) {
       html { scroll-behavior:auto; }
@@ -198,26 +191,27 @@
 
   <main>
     <section class="hero" aria-labelledby="hero-title">
-      <h1 id="hero-title">The home for the reborn community.</h1>
-
-      <div class="copy">
-        <a class="button button--large" href="#waitlist">
-          Join the beta waitlist
-          <svg class="arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15"/><path d="m13 6 6 6-6 6"/></svg>
-        </a>
-        <p class="note">Beta planned for November</p>
-        <div id="fallback" role="status" aria-live="polite">
-          <p>A secure Rebornly account session is active. If you requested a password reset, continue below.</p>
-          <button class="button" id="continueRecovery" type="button">Continue password reset</button>
-        </div>
-      </div>
-
       <figure class="hero-figure">
         <picture>
           <source media="(max-width:760px)" srcset="/assets/images/hero-portrait.jpg" width="1080" height="1350">
           <img src="/assets/images/hero.jpg" alt="A reborn baby asleep in a cream romper, next to a teddy bear on a patterned blanket." width="1440" height="915" fetchpriority="high" decoding="async">
         </picture>
       </figure>
+
+      <h1 id="hero-title">The home for the reborn community.</h1>
+
+      <div class="copy">
+        <p class="lead">Rebornly, an app for the reborn community, is now looking for beta testers.</p>
+        <a class="button" href="/beta/">
+          Join the beta waitlist
+          <svg class="arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15"/><path d="m13 6 6 6-6 6"/></svg>
+        </a>
+        <p class="note">Beta planned for November 2026</p>
+        <div id="fallback" role="status" aria-live="polite">
+          <p>A secure Rebornly account session is active. If you requested a password reset, continue below.</p>
+          <button class="button" id="continueRecovery" type="button">Continue password reset</button>
+        </div>
+      </div>
     </section>
 
     <section class="values" aria-label="What Rebornly is for">
@@ -227,63 +221,53 @@
             <svg viewBox="0 0 24 24" focusable="false"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="m4 17 5-5 4.5 4.5L17 13l3 3"/></svg>
           </div>
           <h2>Share &amp; discover</h2>
-          <p>Share your reborns, and discover artists, sculptors and collectors.</p>
+          <p>Share your reborns and discover artists, sculptors and collectors.</p>
         </article>
         <article class="value">
           <div class="icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" focusable="false"><circle cx="9" cy="8.5" r="3.2"/><path d="M3.4 19a5.8 5.8 0 0 1 11.2 0"/><circle cx="17" cy="9.5" r="2.4"/><path d="M15.6 14.4A5 5 0 0 1 21 19"/></svg>
           </div>
           <h2>Connect with the community</h2>
-          <p>People who share your interest, all over the world.</p>
+          <p>Connect with people who share your interest, around the world.</p>
         </article>
         <article class="value">
           <div class="icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" focusable="false"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3.5v3M16 3.5v3M3.5 10h17"/><path d="m12 12.6 1 2.2 2.4.3-1.8 1.7.5 2.4-2.1-1.2-2.1 1.2.5-2.4-1.8-1.7 2.4-.3Z"/></svg>
           </div>
           <h2>Community happenings</h2>
-          <p>Take part in events, competitions and the odd surprise.</p>
+          <p>Take part in events, competitions and special surprises.</p>
         </article>
       </div>
     </section>
 
     <section class="beta" id="waitlist" aria-labelledby="beta-title">
-      <svg class="leaf" viewBox="0 0 120 160" aria-hidden="true" focusable="false"><path d="M60 156V38"/><path d="M60 128c0-16 12-28 28-30-2 17-12 30-28 30Z"/><path d="M60 104c0-16-12-28-28-30 2 17 12 30 28 30Z"/><path d="M60 78c0-17 12-30 28-32-2 18-12 32-28 32Z"/><path d="M60 54c0-17-12-30-28-32 2 18 12 32 28 32Z"/><path d="M60 38c0-14 8-24 20-28-1 14-8 24-20 28Z"/></svg>
-      <svg class="wave" viewBox="0 0 1440 220" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M0 92c210 58 420 86 720 44s510-84 720-44v128H0Z" fill="#f4e7e2" opacity=".75"/><path d="M0 150c240 44 470 58 720 26s480-52 720-18v62H0Z" fill="#f8f5f0"/></svg>
       <div class="shell">
         <h2 id="beta-title">We’re building Rebornly with the community.</h2>
         <p class="lead">Be among the first to try it.</p>
-        <form class="signup" id="signup" novalidate>
-          <input id="email" name="email" type="email" inputmode="email" autocomplete="email" placeholder="Your email address" aria-label="Your email address">
-          <button class="button" type="submit">
-            Join the waitlist
-            <svg class="arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15"/><path d="m13 6 6 6-6 6"/></svg>
-          </button>
-        </form>
-        <p class="small" id="signup-status" role="status" aria-live="polite"></p>
+        <a class="button" href="/beta/">
+          Join the beta waitlist
+          <svg class="arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15"/><path d="m13 6 6 6-6 6"/></svg>
+        </a>
       </div>
     </section>
   </main>
 
   <footer>
     <div class="shell">
+      <span class="wordmark"><img src="/assets/branding/rebornly_logo.png" alt="Rebornly" width="539" height="160"></span>
       <nav class="footer-links" aria-label="Site documents">
-        <a href="/terms/">Terms of service</a>
-        <a href="/privacy/">Privacy policy</a>
-        <a href="/cookies/">Cookies</a>
+        <a href="/privacy/">Privacy</a>
+        <span aria-hidden="true">·</span>
+        <a href="/terms/">Terms</a>
+        <span aria-hidden="true">·</span>
+        <a href="/contact/">Contact</a>
       </nav>
-      <p class="copyright">Rebornly © 2026</p>
+      <p class="copyright">© 2026 Rebornly</p>
     </div>
   </footer>
 
   <script>
     (() => {
-      const form = document.getElementById('signup');
-      const status = document.getElementById('signup-status');
-      form.addEventListener('submit', (event) => {
-        event.preventDefault();
-        status.textContent = 'The waitlist is not open yet, so nothing was sent or stored.';
-      });
-
       if (!window.__REBORNLY_AUTH_FALLBACK__) return;
       const fallback = document.getElementById('fallback');
       fallback.style.display = 'block';
