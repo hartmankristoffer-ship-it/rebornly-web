@@ -74,13 +74,13 @@
 
     /* --- buttons ---------------------------------------------------------- */
     .button {
-      display:inline-flex; align-items:center; gap:10px; padding:13px 26px; border:0; border-radius:999px;
+      display:inline-flex; align-items:center; gap:10px; min-height:44px; padding:15px 26px; border:0; border-radius:999px;
       background:var(--sage); color:#fff; font:600 15px/1 var(--sans); text-decoration:none; cursor:pointer;
       transition:background-color .18s ease, transform .18s ease;
     }
     .button:hover { background:var(--sage-deep); }
     .button:active { transform:translateY(1px); }
-    .button:focus-visible { outline:3px solid rgba(106,117,105,.35); outline-offset:3px; }
+    .button:focus-visible { outline:3px solid var(--sage-deep); outline-offset:3px; }
     .button .arrow { width:16px; height:16px; flex:none; }
 
     /* --- hero ------------------------------------------------------------- */
@@ -146,7 +146,7 @@
     .footer-links { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:4px 14px; }
     .footer-links a { color:var(--muted); font-size:13px; text-decoration:none; }
     .footer-links a:hover, .footer-links a:focus-visible { color:var(--ink); text-decoration:underline; }
-    .footer-links a:focus-visible { outline:3px solid rgba(106,117,105,.30); outline-offset:4px; border-radius:2px; }
+    .footer-links a:focus-visible { outline:3px solid var(--ink); outline-offset:4px; border-radius:2px; }
     .footer-links span { color:var(--line); }
     footer .copyright { margin:0; color:var(--muted); font-size:12px; }
 
@@ -192,17 +192,17 @@
 
   <main>
     <section class="hero" aria-labelledby="hero-title">
+      <h1 id="hero-title">The home for the reborn community.</h1>
+
       <figure class="hero-figure">
         <picture>
           <source media="(max-width:760px)" srcset="/assets/images/hero-portrait.jpg" width="1080" height="1350">
-          <img src="/assets/images/hero.jpg" alt="A reborn baby asleep in a cream romper, next to a teddy bear on a patterned blanket." width="1440" height="915" fetchpriority="high" decoding="async">
+          <img src="/assets/images/hero.jpg" alt="A reborn baby doll asleep in a cream romper, next to a teddy bear on a patterned blanket." width="1440" height="915" fetchpriority="high" decoding="async">
         </picture>
       </figure>
 
-      <h1 id="hero-title">The home for the reborn community.</h1>
-
       <div class="copy">
-        <p class="lead">Rebornly, an app for the reborn community, is now looking for beta testers.</p>
+        <p class="lead">Rebornly is being built for the reborn community — and we’re now looking for our first beta testers.</p>
         <a class="button" href="/beta/">
           Join the beta waitlist
           <svg class="arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15"/><path d="m13 6 6 6-6 6"/></svg>
