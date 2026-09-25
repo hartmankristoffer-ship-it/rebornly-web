@@ -48,6 +48,7 @@
       --sans:Inter,Roboto,"Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;
       --gutter:clamp(20px,5vw,72px);
       --page:1200px;
+      --hero-left:max(var(--gutter),calc((100vw - var(--page)) / 2 + var(--gutter)));
     }
     * { box-sizing:border-box; }
     html { background:var(--ivory); scroll-behavior:smooth; }
@@ -66,9 +67,9 @@
     .hero { flex:1 1 auto; }
 
     /* --- the bar ---------------------------------------------------------- */
-    .masthead { position:sticky; top:0; z-index:10; background:rgba(248,245,240,.92); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border-bottom:1px solid transparent; }
-    .masthead .shell { display:flex; align-items:center; min-height:clamp(44px,6svh,66px); padding-block:6px; }
-    .wordmark img { width:clamp(104px,min(11vw,16svh),150px); height:auto; mix-blend-mode:multiply; }
+    .masthead { position:sticky; top:0; z-index:10; background:rgba(242,236,230,.94); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+    .masthead .shell { display:flex; align-items:center; justify-content:center; min-height:clamp(52px,7svh,76px); padding-block:8px; }
+    .wordmark img { width:clamp(132px,min(14vw,20svh),186px); height:auto; mix-blend-mode:multiply; }
 
     /* --- buttons ---------------------------------------------------------- */
     .button {
@@ -85,13 +86,17 @@
     /* --- hero ------------------------------------------------------------- */
     /* Two columns across the whole window: the words keep the page's left
        margin, the picture runs out to the right edge, as the reference has it. */
-    .hero { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.04fr); align-items:stretch; min-height:clamp(240px,36svh,400px); background:var(--wash); }
-    .hero .copy { display:flex; flex-direction:column; justify-content:center; padding:clamp(18px,2.7svh,44px) clamp(24px,4vw,56px) clamp(18px,2.7svh,44px) max(var(--gutter),calc((100vw - var(--page)) / 2 + var(--gutter))); }
-    .hero h1 { font-size:clamp(30px,min(4vw,5.4svh),48px); line-height:1.08; letter-spacing:-.02em; max-width:18ch; }
+    .hero { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.04fr);
+            grid-template-areas:"title pic" "copy pic"; align-content:center;
+            min-height:clamp(240px,36svh,400px); padding-block:clamp(18px,2.7svh,44px);
+            background:var(--wash); }
+    .hero .copy { grid-area:copy; display:flex; flex-direction:column; padding:0 clamp(24px,4vw,56px) 0 var(--hero-left); }
+    .hero h1 { grid-area:title; box-sizing:content-box; margin:0; padding:0 clamp(24px,4vw,56px) 0 var(--hero-left);
+               font-size:clamp(30px,min(4vw,5.4svh),48px); line-height:1.08; letter-spacing:-.02em; max-width:18ch; }
     .hero p { margin:clamp(9px,1.5svh,18px) 0 0; max-width:44ch; font-size:clamp(14px,min(1.25vw,2.2svh),17px); line-height:1.55; }
     .hero .button { align-self:flex-start; margin-top:clamp(14px,2.2svh,26px); }
-    .note { margin:clamp(8px,1.3svh,16px) 0 0; color:var(--muted); font-size:clamp(11px,1.6svh,12px); letter-spacing:.18em; text-transform:uppercase; }
-    .hero-figure { position:relative; margin:0; overflow:hidden; }
+    .note { margin:clamp(8px,1.3svh,16px) 0 0; padding-left:28px; color:var(--muted); font-size:13px; letter-spacing:.01em; }
+    .hero-figure { grid-area:pic; position:relative; margin:0; overflow:hidden; }
     .hero-figure img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:64% 42%; }
     /* The picture melts into the warm band on its left, as in the reference. */
     .hero-figure::after { content:""; position:absolute; inset:0; pointer-events:none; background:linear-gradient(90deg,var(--wash) 0%,rgba(242,236,230,.55) 14%,rgba(242,236,230,0) 34%); }
@@ -118,7 +123,7 @@
     .signup input::placeholder { color:#9a948c; }
     .signup input:focus-visible { outline:3px solid rgba(106,117,105,.28); outline-offset:2px; border-color:var(--sage); }
     .beta .small { margin:clamp(5px,0.9svh,12px) auto 0; max-width:52ch; color:var(--muted); font-size:clamp(11.5px,1.7svh,12.5px); }
-    #signup-status { position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0; }
+    #signup-status:empty { display:none; }
     .beta .leaf { position:absolute; right:clamp(-30px,2vw,60px); bottom:clamp(40px,8vw,90px); width:clamp(90px,12vw,150px); stroke:#cdbfae; fill:none; stroke-width:1.2; opacity:.55; z-index:0; }
     .beta .wave { position:absolute; inset:auto 0 0; width:100%; height:auto; display:block; z-index:0; }
 
@@ -129,20 +134,33 @@
 
     /* --- foot ------------------------------------------------------------- */
     footer { background:var(--ivory); }
-    footer .shell { padding-block:clamp(10px,1.4svh,20px); display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:8px 16px; text-align:center; }
-    footer img { width:clamp(82px,min(8vw,13svh),112px); height:auto; mix-blend-mode:multiply; }
-    footer .small { margin:0; color:var(--muted); font-size:clamp(11px,1.6svh,12px); letter-spacing:.18em; text-transform:uppercase; }
+    footer .shell { padding-block:clamp(12px,1.8svh,24px); display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:6px 22px; text-align:center; }
+    .footer-links { display:flex; flex-wrap:wrap; justify-content:center; gap:6px 22px; }
+    .footer-links a { color:var(--muted); font-size:13px; text-decoration:none; border-bottom:1px solid transparent; padding-bottom:1px; }
+    .footer-links a:hover, .footer-links a:focus-visible { color:var(--ink); border-bottom-color:var(--ink); }
+    .footer-links a:focus-visible { outline:3px solid rgba(106,117,105,.30); outline-offset:4px; border-radius:2px; }
     footer .copyright { margin:0; color:var(--muted); font-size:clamp(11px,1.6svh,12px); letter-spacing:0; text-transform:none; }
 
     /* --- tablet ----------------------------------------------------------- */
     @media (max-width:760px) {
-      .hero { grid-template-columns:1fr; min-height:0; }
-      .hero .copy { padding:clamp(30px,5vw,52px) var(--gutter); }
-      .hero h1 { max-width:18ch; }
-      .hero-figure { order:2; }
-      .hero-figure img { position:static; aspect-ratio:16/10; height:auto; object-position:62% 40%; }
-      /* Stacked, the picture stands on its own: no veil over it. */
-      .hero-figure::after { background:none; }
+      /* The picture comes first, right under the bar, and the heading lies on
+         it. Everything else follows below on the page's own ground. */
+      .hero { grid-template-columns:1fr; grid-template-areas:"pic" "copy";
+              min-height:0; padding-block:0; background:var(--ivory); }
+      /* The bar stands on the page itself and the picture rises a little
+         way behind the wordmark, so there is no edge under it at all. */
+      .masthead { position:static; background:transparent; backdrop-filter:none; -webkit-backdrop-filter:none; }
+      .hero { margin-top:calc(-1 * clamp(16px,4.5vw,30px)); }
+      .hero-figure img { position:static; width:100%; height:auto;
+                         aspect-ratio:4/5; object-fit:cover; object-position:50% 32%; }
+      .hero h1 { grid-area:pic; align-self:end; z-index:1; max-width:15ch;
+                 padding:0 var(--gutter) clamp(20px,5.5vw,34px); }
+      /* It fades into the bar above and lightens under the words. */
+      .hero-figure::after { background:
+          linear-gradient(180deg,var(--ivory) 0%,rgba(248,245,240,.92) 6%,rgba(248,245,240,0) 20%),
+          linear-gradient(0deg,var(--ivory) 0%,rgba(248,245,240,.88) 17%,
+                          rgba(248,245,240,.42) 38%,rgba(248,245,240,0) 60%); }
+      .hero .copy { padding:clamp(20px,5vw,30px) var(--gutter) clamp(28px,7vw,42px); }
       .values .shell { grid-template-columns:1fr; grid-template-rows:none; gap:clamp(22px,4vw,34px); }
       .value { display:block; grid-row:auto; }
       .value p { max-width:36ch; }
@@ -151,13 +169,11 @@
     /* A phone scrolls, so the hero keeps the desktop's air: the words on the
        warm band, then the picture whole and unveiled. */
     @media (max-width:560px) {
-      .wordmark img { width:124px; }
-      .hero .copy { padding:34px var(--gutter) 30px; }
-      .hero h1 { font-size:clamp(32px,8.8vw,40px); max-width:none; }
+      .wordmark img { width:150px; }
+      .hero h1 { font-size:clamp(28px,7.8vw,36px); max-width:17ch; }
       .hero p { max-width:36ch; }
-      .hero .button { margin-top:26px; }
-      .note { margin-top:20px; }
-      .hero-figure img { aspect-ratio:4/3; object-position:64% 34%; }
+      .hero .button { margin-top:24px; }
+      .note { margin-top:18px; }
       .values .shell { padding-block:clamp(30px,7vw,46px); gap:clamp(26px,6vw,36px); }
       .value p { max-width:32ch; }
       .beta .shell { padding-block:clamp(34px,8vw,50px); }
@@ -182,14 +198,14 @@
 
   <main>
     <section class="hero" aria-labelledby="hero-title">
+      <h1 id="hero-title">The home for the reborn community.</h1>
+
       <div class="copy">
-        <h1 id="hero-title">The home for the reborn community.</h1>
-        <p>Share your reborns. Discover artists and sculptors. Connect with people who understand.</p>
         <a class="button button--large" href="#waitlist">
           Join the beta waitlist
           <svg class="arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15"/><path d="m13 6 6 6-6 6"/></svg>
         </a>
-        <p class="note">Beta planned</p>
+        <p class="note">Beta planned for November</p>
         <div id="fallback" role="status" aria-live="polite">
           <p>A secure Rebornly account session is active. If you requested a password reset, continue below.</p>
           <button class="button" id="continueRecovery" type="button">Continue password reset</button>
@@ -197,7 +213,10 @@
       </div>
 
       <figure class="hero-figure">
-        <img src="/assets/images/hero.jpg" alt="A reborn baby asleep in a cream romper, next to a teddy bear on a patterned blanket." width="1440" height="915" fetchpriority="high" decoding="async">
+        <picture>
+          <source media="(max-width:760px)" srcset="/assets/images/hero-portrait.jpg" width="1080" height="1350">
+          <img src="/assets/images/hero.jpg" alt="A reborn baby asleep in a cream romper, next to a teddy bear on a patterned blanket." width="1440" height="915" fetchpriority="high" decoding="async">
+        </picture>
       </figure>
     </section>
 
@@ -208,21 +227,21 @@
             <svg viewBox="0 0 24 24" focusable="false"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="m4 17 5-5 4.5 4.5L17 13l3 3"/></svg>
           </div>
           <h2>Share &amp; discover</h2>
-          <p>The reborns you love, and their artists.</p>
+          <p>Share your reborns, and discover artists, sculptors and collectors.</p>
         </article>
         <article class="value">
           <div class="icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" focusable="false"><circle cx="9" cy="8.5" r="3.2"/><path d="M3.4 19a5.8 5.8 0 0 1 11.2 0"/><circle cx="17" cy="9.5" r="2.4"/><path d="M15.6 14.4A5 5 0 0 1 21 19"/></svg>
           </div>
           <h2>Connect with the community</h2>
-          <p>Collectors and artists, from around the world.</p>
+          <p>People who share your interest, all over the world.</p>
         </article>
         <article class="value">
           <div class="icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" focusable="false"><path d="M6 3.5h9.5L19 7v13.5H6z"/><path d="M15.2 3.6V7H19"/><path d="M9 11.5h7M9 15h5"/></svg>
+            <svg viewBox="0 0 24 24" focusable="false"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3.5v3M16 3.5v3M3.5 10h17"/><path d="m12 12.6 1 2.2 2.4.3-1.8 1.7.5 2.4-2.1-1.2-2.1 1.2.5-2.4-1.8-1.7 2.4-.3Z"/></svg>
           </div>
-          <h2>Remember every story</h2>
-          <p>Where she came from, and every moment since.</p>
+          <h2>Community happenings</h2>
+          <p>Take part in events, competitions and the odd surprise.</p>
         </article>
       </div>
     </section>
@@ -234,13 +253,12 @@
         <h2 id="beta-title">We’re building Rebornly with the community.</h2>
         <p class="lead">Be among the first to try it.</p>
         <form class="signup" id="signup" novalidate>
-          <input id="email" name="email" type="email" inputmode="email" autocomplete="email" placeholder="Your email address" aria-label="Your email address" aria-describedby="signup-note">
+          <input id="email" name="email" type="email" inputmode="email" autocomplete="email" placeholder="Your email address" aria-label="Your email address">
           <button class="button" type="submit">
             Join the waitlist
             <svg class="arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15"/><path d="m13 6 6 6-6 6"/></svg>
           </button>
         </form>
-        <p class="small" id="signup-note">The waitlist is not open yet, so nothing is sent or stored.</p>
         <p class="small" id="signup-status" role="status" aria-live="polite"></p>
       </div>
     </section>
@@ -248,8 +266,11 @@
 
   <footer>
     <div class="shell">
-      <img src="/assets/branding/rebornly_logo.png" alt="Rebornly" width="539" height="160">
-      <p class="small">Coming soon</p>
+      <nav class="footer-links" aria-label="Site documents">
+        <a href="/terms/">Terms of service</a>
+        <a href="/privacy/">Privacy policy</a>
+        <a href="/cookies/">Cookies</a>
+      </nav>
       <p class="copyright">Rebornly © 2026</p>
     </div>
   </footer>
@@ -258,12 +279,9 @@
     (() => {
       const form = document.getElementById('signup');
       const status = document.getElementById('signup-status');
-      const note = document.getElementById('signup-note');
       form.addEventListener('submit', (event) => {
         event.preventDefault();
-        const said = 'The waitlist is not open yet, so nothing was sent or stored.';
-        note.textContent = said;
-        status.textContent = said;
+        status.textContent = 'The waitlist is not open yet, so nothing was sent or stored.';
       });
 
       if (!window.__REBORNLY_AUTH_FALLBACK__) return;
