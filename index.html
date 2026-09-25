@@ -277,5 +277,29 @@
       });
     })();
   </script>
+  <script>
+    // WEB-01: a visit through a shared link (rebornlyapp.com/?src=instagram) is
+    // counted once, anonymously, and the source is then taken out of the address
+    // so a reload or a copied link does not count it again. Nothing is stored in
+    // the browser. Off -- no request at all -- while INTAKE_URL is empty;
+    // switching it on also adds the function's origin to connect-src above.
+    (() => {
+      const INTAKE_URL = '';
+      if (!INTAKE_URL || /(^|[#&])(type|access_token)=/.test(location.hash)) return;
+      const params = new URLSearchParams(location.search);
+      if (!params.has('src')) return;
+      const source = (params.get('src') || '').trim().toLowerCase();
+      if (/^[a-z0-9][a-z0-9_-]{0,31}$/.test(source)) {
+        fetch(INTAKE_URL, {
+          method: 'POST', headers: { 'content-type': 'text/plain;charset=UTF-8' },
+          body: JSON.stringify({ type: 'event', event: 'link_visit', source }),
+          keepalive: true, credentials: 'omit', referrerPolicy: 'no-referrer',
+        }).catch(() => {});
+      }
+      params.delete('src');
+      const query = params.toString();
+      history.replaceState(null, '', location.pathname + (query ? '?' + query : '') + location.hash);
+    })();
+  </script>
 </body>
 </html>

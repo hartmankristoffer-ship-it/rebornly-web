@@ -5,7 +5,7 @@
   <title>Join the beta waitlist — Rebornly</title>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; script-src 'sha256-7avjDzwniMHyl+YQGrLmnlaUGIMhMQwsg7641D3A0A0='; base-uri 'none'; form-action 'none'">
   <meta name="description" content="Rebornly's beta application opens before the beta.">
   <meta name="theme-color" content="#f8f5f0">
   <meta name="robots" content="noindex">
@@ -44,6 +44,21 @@
     .footer-links span { color:var(--line); }
     footer .copyright { margin:0; color:var(--muted); font-size:12px; }
     footer img { width:92px; height:auto; mix-blend-mode:multiply; display:block; }
+    .beta-form label, .beta-form legend { display:block; margin:16px 0 6px; color:var(--ink); font-size:15px; font-weight:600; }
+    .beta-form .optional { color:var(--muted); font-weight:400; }
+    .beta-form input[type=text], .beta-form input[type=email], .beta-form textarea { width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:10px; background:#fff; color:var(--ink); font:16px/1.4 var(--sans); }
+    .beta-form textarea { min-height:110px; resize:vertical; }
+    .beta-form input:focus-visible, .beta-form textarea:focus-visible { outline:3px solid var(--ink); outline-offset:2px; }
+    .beta-form fieldset { margin:16px 0 0; padding:0; border:0; }
+    .beta-form legend { margin-top:0; padding:0; }
+    .beta-form .choice, .beta-form .check { display:flex; align-items:flex-start; gap:10px; margin:8px 0 0; color:var(--body); font-weight:400; }
+    .beta-form input[type=radio], .beta-form input[type=checkbox] { margin-top:5px; accent-color:var(--ink); }
+    .beta-form .hp { position:absolute; left:-10000px; width:1px; height:1px; overflow:hidden; }
+    .beta-form .button { display:inline-flex; align-items:center; justify-content:center; margin-top:22px; min-height:46px; padding:0 26px; border:0; border-radius:999px; background:#6a7569; color:#fff; font:600 15px/1 var(--sans); cursor:pointer; }
+    .beta-form .button:hover { background:#5b6658; }
+    .beta-form .button:focus-visible { outline:3px solid #5b6658; outline-offset:3px; }
+    .beta-form .button[disabled] { opacity:.6; cursor:progress; }
+    .beta-status { min-height:24px; margin-top:12px; }
   </style>
 </head>
 <body>
@@ -56,11 +71,37 @@
   <main>
     <div class="shell">
       <h1>Join the beta waitlist</h1>
+      <div id="betaClosed">
       <p>The application is not open yet. Rebornly's beta is planned for
       November 2026, and the form will be here when it opens.</p>
       <p>There is no form on this site yet, so there is nothing to submit and
       no list to be added to. The site is hosted on GitHub Pages, which logs
       visitors' IP addresses for security purposes.</p>
+      </div>
+      <form id="betaForm" class="beta-form" hidden novalidate>
+        <p>Leave your details and we will invite you when the beta opens.</p>
+        <label for="betaName">Name</label>
+        <input id="betaName" name="name" type="text" maxlength="80" autocomplete="name" required>
+        <label for="betaEmail">Email</label>
+        <input id="betaEmail" name="email" type="email" maxlength="254" autocomplete="email" required>
+        <fieldset>
+          <legend>How active are you in the reborn community?</legend>
+          <label class="choice"><input type="radio" name="activity_level" value="new_in_community" required> New in the community</label>
+          <label class="choice"><input type="radio" name="activity_level" value="active_sometimes"> Active sometimes</label>
+          <label class="choice"><input type="radio" name="activity_level" value="very_active"> Very active</label>
+          <label class="choice"><input type="radio" name="activity_level" value="artist_or_sculptor"> Artist or sculptor</label>
+        </fieldset>
+        <label for="betaMessage">Message <span class="optional">(optional)</span></label>
+        <textarea id="betaMessage" name="message" maxlength="1000"></textarea>
+        <div class="hp" aria-hidden="true"><label for="betaWebsite">Website</label><input id="betaWebsite" name="website" type="text" tabindex="-1" autocomplete="off"></div>
+        <label class="check"><input id="betaAdult" name="adult_confirmed" type="checkbox" required> <span>I am 18 or older.</span></label>
+        <label class="check"><input id="betaConsent" name="privacy_consent" type="checkbox" required> <span>I agree that Rebornly may use my details to invite me to the beta and to tell me about the launch, as described in the <a href="/privacy/">Privacy policy</a>. I can withdraw my consent at any time.</span></label>
+        <button id="betaSubmit" class="button" type="submit">Send</button>
+        <p id="betaStatus" class="beta-status" role="status" aria-live="polite"></p>
+      </form>
+      <div id="betaDone" hidden tabindex="-1">
+        <p><strong>Thank you.</strong> You are on the list. We will email you when the beta opens.</p>
+      </div>
       <a class="back" href="/">Back to the start page</a>
     </div>
   </main>
@@ -78,5 +119,60 @@
       <p class="copyright">&copy; 2026 Rebornly</p>
     </div>
   </footer>
+  <script>
+    // WEB-01: the beta sign-up form. Nothing here sets a cookie or stores
+    // anything in the browser. It stays off -- the page above is all a visitor
+    // sees and no request is made -- while INTAKE_URL is empty. Switching it on
+    // sets INTAKE_URL, adds the function's origin to connect-src, and updates
+    // this script's sha256 in the Content-Security-Policy above.
+    (() => {
+      const INTAKE_URL = '';
+      if (!INTAKE_URL) return;
+      const send = (payload) => fetch(INTAKE_URL, {
+        method: 'POST', headers: { 'content-type': 'text/plain;charset=UTF-8' },
+        body: JSON.stringify(payload), keepalive: true, credentials: 'omit', referrerPolicy: 'no-referrer',
+      });
+      const form = document.getElementById('betaForm');
+      const status = document.getElementById('betaStatus');
+      const submit = document.getElementById('betaSubmit');
+      const done = document.getElementById('betaDone');
+      document.getElementById('betaClosed').hidden = true;
+      form.hidden = false;
+      send({ type: 'event', event: 'beta_form_open' }).catch(() => {});
+      const say = (text) => { status.textContent = text; };
+      const MESSAGES = {
+        invalid: 'Please check your details and try again.',
+        busy: 'Too many sign-ups right now. Please try again in a little while.',
+        closed: 'The beta list is not open yet. Please try again soon.',
+        unavailable: 'Something went wrong on our side. Please try again in a moment.',
+      };
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const data = new FormData(form);
+        const name = String(data.get('name') || '').trim();
+        const email = String(data.get('email') || '').trim();
+        const activity = data.get('activity_level');
+        const message = String(data.get('message') || '').trim();
+        if (!name) return say('Please enter your name.');
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return say('Please enter a valid email address.');
+        if (!activity) return say('Please choose how active you are in the community.');
+        if (!document.getElementById('betaAdult').checked) return say('You need to be 18 or older to join the beta.');
+        if (!document.getElementById('betaConsent').checked) return say('Please agree to the Privacy policy to sign up.');
+        submit.disabled = true;
+        say('Sending…');
+        let state = 'unavailable';
+        try {
+          const response = await send({
+            type: 'signup', name, email, activity_level: String(activity), message: message || null,
+            adult_confirmed: true, privacy_consent: true, website: String(data.get('website') || ''),
+          });
+          state = ((await response.json()) || {}).state || 'unavailable';
+        } catch { state = 'unavailable'; }
+        submit.disabled = false;
+        if (state === 'accepted') { form.hidden = true; done.hidden = false; done.focus(); return; }
+        say(MESSAGES[state] || MESSAGES.unavailable);
+      });
+    })();
+  </script>
 </body>
 </html>
