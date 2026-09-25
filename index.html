@@ -53,6 +53,9 @@
     #fallback button:hover { background:var(--rose-deep); }
     #fallback button:active { transform:translateY(1px); }
     #fallback button:focus-visible { outline:3px solid rgba(201,104,117,.28); outline-offset:3px; }
+    footer .legal { display:flex; flex-wrap:wrap; justify-content:center; gap:4px 12px; margin-left:16px; }
+    footer .legal a { color:var(--text-faint); }
+    @media (max-width:480px) { footer { flex-direction:column; gap:6px; } footer .legal { margin-left:0; } }
     footer { display:flex; justify-content:center; align-items:center; min-height:34px; color:var(--text-faint); font-size:12px; letter-spacing:.01em; text-align:center; }
     @keyframes hero-in { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
     @media (max-width:640px) { .page { padding:max(24px,env(safe-area-inset-top)) 20px max(20px,env(safe-area-inset-bottom)); } main { padding-top:28px; padding-bottom:56px; } .brand-lockup { margin-bottom:30px; } .brand-lockup img { width:200px; } .eyebrow { margin-bottom:16px; font-size:11px; } .intro { margin-top:20px; } .status { margin-top:26px; border-radius:16px; } }
@@ -72,7 +75,7 @@
         <div id="fallback" role="status" aria-live="polite"><p>A secure Rebornly account session is active. If you requested a password reset, continue below.</p><button id="continueRecovery" type="button">Continue password reset</button></div>
       </section>
     </main>
-    <footer><span>Rebornly © 2026</span></footer>
+    <footer><span>Rebornly © 2026</span><nav class="legal" aria-label="Legal"><a href="/privacy/">Privacy Policy</a><a href="/cookies/">Cookie Policy</a><a href="/terms/">Terms of Service</a></nav></footer>
   </div>
   <script>
     (() => {
