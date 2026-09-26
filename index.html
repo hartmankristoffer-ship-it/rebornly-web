@@ -37,6 +37,7 @@
       --wash:#f2ece6;           /* the hero's warm band on wide screens */
       --wash-soft:#f6f1ec;      /* the quiet band the waitlist sits on */
       --rose-wash:#f4e8e4;      /* the round icon fills */
+      --heart:#c9a9a1;          /* the one ornament, on the rule */
       --ink:#22302a;            /* headings, 12.7:1 on the ivory */
       --body:#5e625c;           /* body text, 5.7:1 */
       --muted:#6e7269;          /* small print, 4.6:1 */
@@ -67,7 +68,7 @@
     .hero { flex:1 1 auto; }
 
     /* --- the bar: small, quiet, the same colour as what sits under it ------ */
-    .masthead { background:var(--ivory); }
+    .masthead { background:var(--wash); }
     .masthead .shell { display:flex; align-items:center; justify-content:center;
                        min-height:clamp(62px,7.2svh,74px); padding-block:8px; }
     .wordmark img { width:clamp(112px,9vw,132px); height:auto; mix-blend-mode:multiply; }
@@ -110,6 +111,10 @@
     .hero-figure::after { content:""; position:absolute; inset:0; pointer-events:none;
       background:linear-gradient(90deg,var(--wash) 0%,rgba(242,236,230,.55) 14%,rgba(242,236,230,0) 34%); }
 
+    /* --- the rule that separates the hero from the three ------------------ */
+    /* Only where the hero and the blocks share one ground: on a wide screen
+       the bands' own colours already do this work. */
+    .divider { display:none; }
     /* --- what it is ------------------------------------------------------- */
     .values { background:var(--ivory); }
     .values .shell { padding-block:clamp(22px,3.4svh,50px); display:grid;
@@ -152,20 +157,32 @@
 
     /* --- narrow: the photograph leads ------------------------------------- */
     @media (max-width:760px) {
-      .hero { grid-template-columns:1fr; grid-template-rows:auto; grid-template-areas:"title" "pic" "copy";
+      /* A white bar, then the photograph with a clean edge on both sides of
+         it, then the words centred under it. */
+      .masthead { background:#fff; backdrop-filter:none; -webkit-backdrop-filter:none; }
+      .hero { grid-template-columns:1fr; grid-template-rows:auto; grid-template-areas:"pic" "title" "copy";
               min-height:0; padding-block:0; background:var(--ivory); }
-      .hero-figure { height:clamp(280px,52svh,520px); }
-      .hero-figure img { position:static; width:100%; height:100%; object-position:52% 30%; }
-      /* It settles into the page instead of stopping at a line. */
-      .hero-figure::after { background:
-          linear-gradient(180deg,var(--ivory) 0%,rgba(248,245,240,0) 9%),
-          linear-gradient(0deg,var(--ivory) 0%,rgba(248,245,240,.55) 9%,rgba(248,245,240,0) 26%); }
-      .hero h1 { padding:clamp(16px,4vw,26px) var(--gutter) clamp(16px,4vw,24px);
-                 font-size:clamp(31px,9.8vw,42px); line-height:1.06; max-width:none; text-wrap:pretty; }
-      .hero .copy { padding:clamp(18px,4.5vw,26px) var(--gutter) clamp(30px,7vw,44px); }
-      .hero .lead { margin-top:0; max-width:38ch; font-size:17px; line-height:1.5; }
-      .hero .button { margin-top:22px; }
-      .note { margin-top:16px; }
+      .hero-figure { height:clamp(300px,54svh,540px); }
+      .hero-figure img { position:static; width:100%; height:100%; object-position:52% 26%; }
+      /* The bar keeps its clean edge; the picture's lower half melts
+         into the page over a long distance instead of stopping. */
+      .hero-figure::after { background:linear-gradient(0deg,
+          var(--ivory) 0%, rgba(248,245,240,.94) 12%, rgba(248,245,240,.72) 24%,
+          rgba(248,245,240,.40) 36%, rgba(248,245,240,.14) 46%, rgba(248,245,240,0) 56%); }
+      .hero h1 { padding:clamp(26px,7vw,38px) var(--gutter) 0; text-align:center;
+                 font-size:clamp(29px,8.6vw,38px); line-height:1.1; max-width:none; text-wrap:balance; }
+      .hero .copy { align-items:center; text-align:center;
+                    padding:0 var(--gutter) clamp(30px,7vw,44px); }
+      .hero .lead { margin-top:clamp(12px,3.4vw,18px); max-width:34ch; font-size:17px; line-height:1.5; }
+      .hero .button { align-self:center; margin-top:clamp(20px,5.4vw,28px); padding-inline:34px; }
+      .note { margin-top:clamp(14px,3.6vw,20px); padding-left:0; text-align:center; }
+      #fallback { margin-inline:auto; text-align:left; }
+      .divider { display:flex; align-items:center; gap:clamp(12px,3.6vw,20px);
+                 width:min(100%,var(--page)); margin:0 auto; padding-inline:var(--gutter); }
+      .divider::before, .divider::after { content:""; flex:1; height:1px; background:var(--line); }
+      .divider svg { width:clamp(15px,4.4vw,19px); height:auto; flex:none;
+                     stroke:var(--heart); fill:none; stroke-width:1.5;
+                     stroke-linecap:round; stroke-linejoin:round; }
       .values .shell { grid-template-columns:1fr; grid-template-rows:none;
                        padding-block:clamp(26px,6vw,38px); gap:clamp(22px,5.4vw,30px); }
       .value { display:block; grid-row:auto; }
@@ -214,6 +231,10 @@
         </div>
       </div>
     </section>
+
+    <div class="divider" aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false"><path d="M12 20.2S3.8 15.4 3.8 9.9a4.1 4.1 0 0 1 7.4-2.5l.8 1 .8-1a4.1 4.1 0 0 1 7.4 2.5c0 5.5-8.2 10.3-8.2 10.3Z"/></svg>
+    </div>
 
     <section class="values" aria-label="What Rebornly is for">
       <div class="shell">
