@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; connect-src https://cavjsnlmktsjlofhokkg.supabase.co">
   <meta name="description" content="Rebornly is a new community in development for reborn collectors, artists and sculptors.">
   <meta name="theme-color" content="#f8f5f0">
   <title>Rebornly — The home for the reborn community</title>
@@ -305,7 +305,7 @@
     // the browser. Off -- no request at all -- while INTAKE_URL is empty;
     // switching it on also adds the function's origin to connect-src above.
     (() => {
-      const INTAKE_URL = '';
+      const INTAKE_URL = 'https://cavjsnlmktsjlofhokkg.supabase.co/functions/v1/website-intake';
       if (!INTAKE_URL || /(^|[#&])(type|access_token)=/.test(location.hash)) return;
       const params = new URLSearchParams(location.search);
       if (!params.has('src')) return;
