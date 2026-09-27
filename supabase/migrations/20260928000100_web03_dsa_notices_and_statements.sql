@@ -26,7 +26,7 @@
 alter table forum.reports
   add column kind text not null default 'rules' check (kind in ('rules', 'illegal')),
   add column good_faith boolean not null default false,
-  add column resolution_action text check (resolution_action in ('hidden', 'no_action')),
+  add column resolution_action text check (resolution_action in ('hidden', 'no_action', 'removed')),
   add column decision_seen_at timestamptz,
   add constraint reports_illegal_needs_good_faith check (kind <> 'illegal' or good_faith),
   add constraint reports_action_with_resolution check ((resolved_at is null) = (resolution_action is null));
@@ -69,9 +69,46 @@ declare
   v text := btrim(coalesce(p_text, ''), ' ' || chr(9) || chr(10) || chr(13));
 begin
   if length(v) < 10 or length(v) > 2000 or not forum.text_ok(v) then
-    perform forum.fail('invalid_reason');
+    perform forum.fail('invalid_notice');
   end if;
   return v;
+end;
+$$;
+
+-- A member's own records stay theirs while suspended: their notices and the
+-- decisions on them, the statements of reasons about their hidden posts, and
+-- deleting their own posts (Terms 3a; GDPR). These checks admit an active or
+-- a suspended member, and nobody else. The writer takes the same lock as
+-- forum.require_member, so an erasure is still never raced.
+create function forum.require_self_writer() returns forum.members
+language plpgsql volatile set search_path = '' as $$
+declare
+  m forum.members;
+begin
+  if auth.uid() is null then
+    perform forum.fail('not_signed_in');
+  end if;
+  select * into m from forum.members where user_id = auth.uid() for key share;
+  if m.user_id is null then
+    perform forum.fail('not_member');
+  end if;
+  return m;
+end;
+$$;
+
+create function forum.require_self_reader() returns forum.members
+language plpgsql stable set search_path = '' as $$
+declare
+  m forum.members;
+begin
+  if auth.uid() is null then
+    perform forum.fail('not_signed_in');
+  end if;
+  select * into m from forum.members where user_id = auth.uid();
+  if m.user_id is null then
+    perform forum.fail('not_member');
+  end if;
+  return m;
 end;
 $$;
 
@@ -172,6 +209,25 @@ $$;
 
 revoke all on all functions in schema forum from public;
 
+-- A member deletes their own post, also while suspended: its text is gone for
+-- good. Deleting the opening post also wipes the thread's title.
+create or replace function public.forum_delete_post(p_post_id uuid) returns void
+language plpgsql security definer set search_path = '' as $$
+declare
+  m forum.members := forum.require_self_writer();
+  p forum.posts;
+begin
+  select * into p from forum.posts where id = p_post_id for update;
+  if not found or p.author_id is distinct from m.user_id or p.deleted_at is not null then
+    perform forum.fail('not_found');
+  end if;
+  update forum.posts set body = '', deleted_at = now() where id = p.id;
+  if p.is_opening then
+    update forum.threads set title = '', deleted_at = now() where id = p.thread_id;
+  end if;
+end;
+$$;
+
 -- ---------------------------------------------------------------------------
 -- Notices (Art. 16)
 -- ---------------------------------------------------------------------------
@@ -199,7 +255,9 @@ begin
   else
     v_reason := forum.clean_reason(p_reason);
   end if;
-  select * into p from forum.posts where id = p_post_id;
+  -- FOR SHARE waits for a moderator hiding this post at the same moment
+  -- (lock_post_for_moderation holds it FOR UPDATE), then sees it hidden.
+  select * into p from forum.posts where id = p_post_id for share;
   if not found then
     perform forum.fail('not_found');
   end if;
@@ -225,7 +283,7 @@ $$;
 create function public.forum_my_reports() returns jsonb
 language plpgsql stable security definer set search_path = '' as $$
 declare
-  m forum.members := forum.require_reader();
+  m forum.members := forum.require_self_reader();
 begin
   return coalesce((
     select jsonb_agg(jsonb_build_object(
@@ -248,13 +306,38 @@ begin
 end;
 $$;
 
-create function public.forum_mark_reports_seen() returns void
+-- Marks as seen the decisions the member was shown (their ids), and only
+-- those: one decided after the page loaded stays new.
+create function public.forum_mark_reports_seen(p_ids uuid[]) returns void
 language plpgsql security definer set search_path = '' as $$
 declare
-  m forum.members := forum.require_member();
+  m forum.members := forum.require_self_writer();
 begin
   update forum.reports set decision_seen_at = now()
-   where reporter_id = m.user_id and resolved_at is not null and decision_seen_at is null;
+   where reporter_id = m.user_id and id = any(coalesce(p_ids, '{}'))
+     and resolved_at is not null and decision_seen_at is null;
+end;
+$$;
+
+-- The member's own hidden posts, each with its statement of reasons. A
+-- suspended member reads this too (they cannot open the threads).
+create function public.forum_my_hidden_posts() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare
+  m forum.members := forum.require_self_reader();
+begin
+  return coalesce((
+    select jsonb_agg(jsonb_build_object(
+             'id', p.id,
+             'opening', p.is_opening,
+             'thread_title', forum.thread_title(t, m),
+             'body', nullif(p.body, ''),
+             'created_at', p.created_at,
+             'decision', forum.decision_json(p.hidden_decision_id))
+           order by p.seq)
+    from forum.posts p
+    join forum.threads t on t.id = p.thread_id
+    where p.author_id = m.user_id and p.hidden_at is not null and p.deleted_at is null), '[]'::jsonb);
 end;
 $$;
 
@@ -293,10 +376,21 @@ begin
   if (v_source = 'member_report') is distinct from (p_report_id is not null) then
     perform forum.fail('invalid_source');
   end if;
-  if p_report_id is not null and not exists (
-       select 1 from forum.reports
-       where id = p_report_id and post_id = p.id and resolved_at is null) then
-    perform forum.fail('not_found');
+  if p_report_id is not null then
+    perform 1 from forum.reports
+     where id = p_report_id and post_id = p.id and resolved_at is null for update;
+    if not found then
+      perform forum.fail('not_found');
+    end if;
+  elsif v_source = 'own_initiative' then
+    -- Members had already reported this post: the decision follows their
+    -- notices, whatever the moderator came from, and says so (Art. 17(3)(b)).
+    select open_notice.id into p_report_id from forum.reports open_notice
+     where open_notice.post_id = p.id and open_notice.resolved_at is null
+     order by open_notice.created_at, open_notice.id limit 1 for update;
+    if found then
+      v_source := 'member_report';
+    end if;
   end if;
   insert into forum.decisions (action, member_id, post_id, basis, basis_reference, facts,
                                source, report_id, decided_by)
@@ -335,6 +429,10 @@ begin
   p := forum.lock_post_for_moderation(p_post_id);
   update forum.decisions set lifted_at = now()
    where id = p.hidden_decision_id and lifted_at is null;
+  update forum.reports
+     set resolution = resolution || ' A moderator later restored the post.', decision_seen_at = null
+   where post_id = p.id and resolution_action = 'hidden'
+     and resolution not like '%later restored the post.';
   update forum.posts
      set hidden_at = null, hidden_reason = null, hidden_by = null, hidden_decision_id = null
    where id = p.id;
@@ -577,9 +675,14 @@ begin
   end if;
 
   select count(*) into v_posts from forum.posts where author_id = v_uid and deleted_at is null;
-  delete from forum.reports
-   where reporter_id = v_uid
-      or post_id in (select id from forum.posts where author_id = v_uid);
+  delete from forum.reports where reporter_id = v_uid;
+  -- Other members' notices about this member's posts are theirs, and the law
+  -- owes them a decision (DSA Art. 16(5)): the open ones are decided now.
+  update forum.reports
+     set resolved_at = now(), resolution_action = 'removed', decision_seen_at = null,
+         resolution = 'The post was removed when its author''s account was deleted.'
+   where resolved_at is null
+     and post_id in (select id from forum.posts where author_id = v_uid);
   update forum.decisions
      set facts = 'Erased on request', basis_reference = 'Erased on request', member_id = null
    where member_id = v_uid;

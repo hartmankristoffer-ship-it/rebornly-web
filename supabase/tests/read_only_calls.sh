@@ -30,6 +30,7 @@ declare -A CALLS=(
   [forum_thread]="select public.forum_thread('$THREAD')"
   [forum_mod_reports]="select public.forum_mod_reports()"
   [forum_my_reports]="select public.forum_my_reports()"
+  [forum_my_hidden_posts]="select public.forum_my_hidden_posts()"
   [forum_mod_invitations]="select public.forum_mod_invitations()"
   [forum_mod_members]="select public.forum_mod_members()"
 )

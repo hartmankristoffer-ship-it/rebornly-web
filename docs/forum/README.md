@@ -45,6 +45,19 @@ app.
   post locks the post's author first, in the same order, and the erasure clears
   the moderation log once more at its end. `supabase/tests/erase_race.sh`
   proves this with two real sessions, and fails if they did not overlap.
+- **EU Digital Services Act.**
+  - *Notices (Art. 16).* A member reports a post as breaking the rules or as
+    illegal; an illegal-content notice needs an explanation and a statement of
+    good faith. The member sees the notice as received at once, and the decision
+    later, under My reports. Anyone else notifies by email, as `#/notice`
+    explains, and RUNBOOK 8b is the procedure.
+  - *Statements of reasons (Art. 17).* Hiding a post and suspending an account
+    are recorded in `forum.decisions`: the restriction, the ground (a forum rule
+    or the law), the facts, what the decision followed, and when it was lifted.
+    The member it concerns sees all of it, that no automated means were used,
+    and how to ask for another look.
+  - A suspended member still reaches their reports, their hidden posts and
+    deleting their own posts (`forum.require_self_*`).
 - **Reads never lock.** The Data API runs a `STABLE` function in a read-only
   transaction, so the read functions check membership without a lock.
   `supabase/tests/read_only_calls.sh` runs every one of them in a real

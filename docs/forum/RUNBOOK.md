@@ -153,6 +153,11 @@ browser (Edge, Firefox) as B.
   and what it followed. They see all of it.
 - The member always sees that no automated means were used and how to ask for
   another look. Nothing in the forum decides by itself.
+- A suspended member still sees their reports and their hidden posts, and can
+  delete their own posts.
+- **If anything in the forum suggests a threat to someone's life or safety**,
+  whether from a report, an email or your own reading, report it to the police
+  at once (DSA Art. 18).
 
 ## 8b. Notices of illegal content by email (EU Digital Services Act, Art. 16)
 
@@ -177,9 +182,6 @@ Anyone can send one to support@rebornlyapp.com, as described on
    > a person will look at it again. You can also take the matter to a
    > court.
 
-5. **If the content suggests a threat to someone's life or safety**, report it
-   to the police at once (DSA Art. 18).
-
 Keep the email thread until the forum is deleted. It is the record of the
 notice.
 
@@ -191,11 +193,16 @@ In the SQL Editor:
   `select forum.export_member('<their address>');`
 - Delete them (erasure):
   `select forum.erase_member('<their address>');`
-  This wipes their posts and thread titles, deletes the reports they made and
-  those about their posts, removes their address, id and your reasons about
-  them from the moderation log, deletes Supabase Auth's sign-in log entries
-  that name them, and deletes their sign-in account (with its sessions).
-  Replies by others stay; a reply of theirs you had hidden stays hidden.
+  This wipes their posts and thread titles, deletes the reports they made,
+  removes their address, id and your reasons about them from the moderation
+  log and from your decisions, deletes Supabase Auth's sign-in log entries that
+  name them, and deletes their sign-in account (with its sessions). Replies by
+  others stay, and so do other members' reports about their posts: an open one
+  is decided as "removed", and its reporter sees that under My reports. A reply
+  of theirs you had hidden stays hidden.
+- For both requests, also search the support mailbox for notices of illegal
+  content the person sent or that name them (section 8b). Include those in the
+  copy, or delete them.
 - Never delete a member from the Authentication → Users page instead: that
   removes the account but leaves the texts they wrote.
 
@@ -210,5 +217,7 @@ In the SQL Editor:
    Members can still read and delete their own posts. Post an announcement with
    the date the forum will be deleted.
 2. After 30 days: **Project Settings → General → Delete project**. This deletes
-   every account, post and log. Then ask Claude to take `/forum/` off the website
-   and remove the forum parts from the legal texts.
+   every account, post and log. Also delete the notice emails in the support
+   mailbox (section 8b); the Privacy Policy promises they go with the forum.
+   Then ask Claude to take `/forum/` off the website and remove the forum parts
+   from the legal texts.
