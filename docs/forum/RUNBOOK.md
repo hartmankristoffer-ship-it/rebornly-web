@@ -17,8 +17,9 @@ Placeholders are written like `<this>`.
 ## 2. The database
 
 1. **SQL Editor** → New query → paste the whole file
-   `supabase/migrations/20260927000100_web02_beta_forum.sql` → **Run**. It should
-   finish without an error.
+   `supabase/migrations/20260927000100_web02_beta_forum.sql` → **Run**. Then do
+   the same with `supabase/migrations/20260928000100_web03_dsa_notices_and_statements.sql`.
+   Run them in that order. Both should finish without an error.
 2. Invite yourself (one line, your own address):
 
    ```sql
@@ -78,9 +79,24 @@ public by design and safe to paste in chat:
 - Project URL, `https://<project-ref>.supabase.co`
 - **Publishable** key, `sb_publishable_…` (never the secret key)
 
-Claude then opens a small PR in rebornly-web that sets them in
-`forum/config.js` and puts the URL in `connect-src` in `forum/index.html`. The
-forum goes live when you merge it.
+Claude then opens two PRs.
+
+- **rebornly-web:** sets the two values in `forum/config.js`, puts the URL in
+  `connect-src` in `forum/index.html`, and fills in the effective date of the
+  texts' **version 1.1** (`docs/forum/LEGAL_TEXT_CHANGES.md`).
+- **The app repository:** a documents PR with the same date in
+  `docs/legal/website/`.
+
+The same day, in this order:
+
+1. You have moved to **Pro** (step 1). Version 1.1 says request logs are kept
+   7 days, which is true only on Pro.
+2. Merge both PRs.
+3. In the **Production** project (not the forum's), set the Edge Function
+   secret `REBORNLY_WEBSITE_PRIVACY_POLICY_VERSION` to `1.1` for
+   `website-intake`.
+
+The forum and the new texts go live together.
 
 ## 7. Your moderator role
 
@@ -127,9 +143,49 @@ browser (Edge, Firefox) as B.
 - **Invite:** Moderation → *Invite an email address*. This only lets the address
   sign in; write to the person yourself and send them to
   `https://rebornlyapp.com/forum/`.
-- **Reports** show under Moderation. Hide the post with a reason (the author
-  sees it) or resolve the report with a note.
-- **Suspend** a member under Moderation → Members, with a reason they will see.
+- **Reports** show under Moderation, marked *Forum rules* or *Illegal
+  content*; an illegal-content notice shows the notifier's name. One marked
+  *Child sexual abuse material* goes to the police at once, before anything
+  else. Look at reports at least once a day during the beta. Either:
+  - *Hide the post*: choose the ground (a forum rule, or the law with its
+    provision) and write what happened. The author sees all of it, and so does
+    the reporter's decision.
+  - *No action*: write why. The member who reported reads it under My reports.
+- **Suspend** a member under Moderation → Members: the ground, what happened,
+  and what it followed. They see all of it.
+- The member always sees that no automated means were used and how to ask for
+  another look. Nothing in the forum decides by itself.
+- A suspended member still sees their reports (My reports) and their posts
+  (My posts), and can delete their own posts.
+- **If anything in the forum suggests a threat to someone's life or safety**,
+  whether from a report, an email or your own reading, report it to the police
+  at once (DSA Art. 18).
+
+## 8b. Notices of illegal content by email (EU Digital Services Act, Art. 16)
+
+Anyone can send one to support@rebornlyapp.com, as described on
+`rebornlyapp.com/forum/#/notice`. For each notice:
+
+1. **Confirm receipt** the same or the next working day:
+
+   > Thank you. We have received your notice about content in the Rebornly
+   > beta forum. A person will look at it, and we will tell you what we decide.
+
+2. **Look at it yourself.** If the notice says where the content is and why it
+   is illegal, you can act on it. Ask the sender for anything missing.
+3. **Decide.**
+   - To hide the post, use *Hide*, choose the law as the ground and name the
+     provision, and set *What it followed* to "A notice sent by email".
+   - Otherwise take no action.
+4. **Tell the sender** your decision:
+
+   > We have looked at your notice. Our decision: [the post was hidden /
+   > no action], because [reason]. If you disagree, reply to this email and
+   > a person will look at it again. You can also take the matter to a
+   > court.
+
+Keep the email thread until the forum is deleted. It is the record of the
+notice.
 
 ## 9. Requests from members
 
@@ -139,11 +195,21 @@ In the SQL Editor:
   `select forum.export_member('<their address>');`
 - Delete them (erasure):
   `select forum.erase_member('<their address>');`
-  This wipes their posts and thread titles, deletes the reports they made and
-  those about their posts, removes their address, id and your reasons about
-  them from the moderation log, deletes Supabase Auth's sign-in log entries
-  that name them, and deletes their sign-in account (with its sessions).
-  Replies by others stay; a reply of theirs you had hidden stays hidden.
+  This wipes their posts and thread titles, deletes the reports they made,
+  removes their address, id and your reasons about them from the moderation
+  log and from your decisions, deletes Supabase Auth's sign-in log entries that
+  name them, and deletes their sign-in account (with its sessions). Replies by
+  others stay, and so do other members' reports about their posts: an open one
+  is decided as "removed", and its reporter sees that under My reports. A reply
+  of theirs you had hidden stays hidden.
+- For both requests, also search the support mailbox for notices of illegal
+  content (section 8b):
+  - **Notices the person sent:** include them in the copy. On erasure, delete
+    them once you have told them your decision.
+  - **Notices others sent that name the person:** for a copy, give the content
+    without the sender's name or address (GDPR Art. 15(4)). On erasure, keep
+    them: you must keep a notice until the forum is deleted, as the Privacy
+    Policy says.
 - Never delete a member from the Authentication → Users page instead: that
   removes the account but leaves the texts they wrote.
 
@@ -158,5 +224,7 @@ In the SQL Editor:
    Members can still read and delete their own posts. Post an announcement with
    the date the forum will be deleted.
 2. After 30 days: **Project Settings → General → Delete project**. This deletes
-   every account, post and log. Then ask Claude to take `/forum/` off the website
-   and remove the forum parts from the legal texts.
+   every account, post and log. Also delete the notice emails in the support
+   mailbox (section 8b); the Privacy Policy promises they go with the forum.
+   Then ask Claude to take `/forum/` off the website and remove the forum parts
+   from the legal texts.

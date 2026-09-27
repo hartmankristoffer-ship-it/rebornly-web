@@ -4,6 +4,6 @@
 // makes no request. See docs/forum/RUNBOOK.md for switching it on, which also
 // puts FORUM_URL's origin in connect-src in index.html.
 window.REBORNLY_FORUM_CONFIG = Object.freeze({
-  FORUM_URL: '',
-  FORUM_KEY: '',
+  FORUM_URL: 'https://bdbxhduvbkaegzhaupcg.supabase.co',
+  FORUM_KEY: 'sb_publishable_-0XmkE9719_PxUN82frVRQ_NdkBvNt6',
 });

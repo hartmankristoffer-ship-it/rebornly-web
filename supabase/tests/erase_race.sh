@@ -103,4 +103,110 @@ else
   echo "not ok - a reply during a held erasure: waited ${waited} ms, left=$left: $out"; fail=1
 fi
 
+# ---------------------------------------------------------------------------
+# WEB-03 fixtures: a moderator, and members with posts of their own.
+# ---------------------------------------------------------------------------
+MOD=10000000-0000-4000-8000-000000000004
+CARL=10000000-0000-4000-8000-000000000005   # writes a post the moderator hides
+DORA=10000000-0000-4000-8000-000000000006   # reports it meanwhile
+EVE=10000000-0000-4000-8000-000000000007    # deletes her own post while being erased
+FAY=10000000-0000-4000-8000-000000000008    # erased while Dora reports her post
+P_CARL=10000000-0000-4000-8000-0000000000c1
+P_EVE=10000000-0000-4000-8000-0000000000e1
+P_FAY=10000000-0000-4000-8000-0000000000f1
+q "insert into auth.users (id, email) values ('$MOD', 'mod@race.test'), ('$CARL', 'carl@race.test'),
+     ('$DORA', 'dora@race.test'), ('$EVE', 'eve@race.test'), ('$FAY', 'fay@race.test');
+   insert into forum.members (user_id, display_name, role, rules_version, adult_confirmed_at) values
+     ('$MOD', 'Race Mod', 'moderator', '1.0', now()), ('$CARL', 'Carl', 'member', '1.0', now()),
+     ('$DORA', 'Dora', 'member', '1.0', now()), ('$EVE', 'Eve', 'member', '1.0', now()),
+     ('$FAY', 'Fay', 'member', '1.0', now());
+   insert into forum.posts (id, thread_id, author_id, body) values
+     ('$P_CARL', '$THREAD', '$CARL', 'Carl writes'), ('$P_EVE', '$THREAD', '$EVE', 'Eve writes'),
+     ('$P_FAY', '$THREAD', '$FAY', 'Fay writes');" \
+  || { echo "not ok - WEB-03 race setup"; exit 1; }
+
+as_member() {  # $1 member id, $2 SQL: one call, as that member, in its own session
+  docker exec -i "$C" psql -U postgres -h localhost -X -qtA 2>&1 <<SQL
+begin;
+select set_config('request.jwt.claim.sub', '$1', true) \g /dev/null
+set local role authenticated;
+$2;
+commit;
+SQL
+}
+
+# ---------------------------------------------------------------------------
+# 3. A moderator is hiding a post (transaction open): a notice about it waits,
+#    then sees the post hidden and is refused, so no notice stays open on a
+#    hidden post without its decision.
+# ---------------------------------------------------------------------------
+docker exec -i "$C" psql -U postgres -h localhost -X -qtA > /dev/null 2>&1 <<SQL &
+set application_name = 'race-hide';
+begin;
+select set_config('request.jwt.claim.sub', '$MOD', true);
+set local role authenticated;
+select public.forum_mod_hide_post('$P_CARL', 'Hidden while Dora reports it', 'rules', 'Forum rule 1');
+select pg_sleep(6);
+commit;
+SQL
+if ! wait_sleeping race-hide; then echo "not ok - the hiding session never reached its open transaction"; fail=1; fi
+t0=$(ms)
+out="$(as_member "$DORA" "select public.forum_report_post('$P_CARL', 'Dora reports Carl')")"
+waited=$(( $(ms) - t0 ))
+wait
+open=$(q "select count(*) from forum.reports where post_id = '$P_CARL' and resolved_at is null")
+if echo "$out" | grep -q "forum:not_found" && [ "$open" = "0" ] && [ "$waited" -ge 2000 ]; then
+  echo "ok - a notice filed while a moderator hides the post waits (${waited} ms), and no notice is left open"
+else
+  echo "not ok - a notice during a hide: waited ${waited} ms, open notices=$open: $out"; fail=1
+fi
+
+# ---------------------------------------------------------------------------
+# 4. The erasure holds a member: deleting their own post meanwhile (a
+#    self-service write, allowed even while suspended) waits and is refused.
+# ---------------------------------------------------------------------------
+docker exec -i "$C" psql -U postgres -h localhost -X -qtA > /dev/null 2>&1 <<SQL &
+set application_name = 'race-erase-eve';
+begin;
+select forum.erase_member('eve@race.test');
+select pg_sleep(6);
+commit;
+SQL
+if ! wait_sleeping race-erase-eve; then echo "not ok - the erasure of Eve never reached its open transaction"; fail=1; fi
+t0=$(ms)
+out="$(as_member "$EVE" "select public.forum_delete_post('$P_EVE')")"
+waited=$(( $(ms) - t0 ))
+wait
+if echo "$out" | grep -q "forum:not_member" && [ "$waited" -ge 2000 ]; then
+  echo "ok - a self-service write during a held erasure waits (${waited} ms) and is refused"
+else
+  echo "not ok - a self-service write during a held erasure: waited ${waited} ms: $out"; fail=1
+fi
+
+# ---------------------------------------------------------------------------
+# 5. A notice about a member's post is being filed (transaction open) when
+#    that member is erased: the erasure waits for it and then decides it as
+#    removed, so the notifier gets a decision.
+# ---------------------------------------------------------------------------
+docker exec -i "$C" psql -U postgres -h localhost -X -qtA > /dev/null 2>&1 <<SQL &
+set application_name = 'race-report-fay';
+begin;
+select set_config('request.jwt.claim.sub', '$DORA', true);
+set local role authenticated;
+select public.forum_report_post('$P_FAY', 'Dora reports Fay');
+select pg_sleep(6);
+commit;
+SQL
+if ! wait_sleeping race-report-fay; then echo "not ok - Dora's notice never reached its open transaction"; fail=1; fi
+t0=$(ms)
+q "select forum.erase_member('fay@race.test')" > /dev/null
+waited=$(( $(ms) - t0 ))
+wait
+decided=$(q "select string_agg(coalesce(resolution_action, 'open'), ',') from forum.reports where post_id = '$P_FAY'")
+if [ "$decided" = "removed" ] && [ "$waited" -ge 2000 ]; then
+  echo "ok - a notice in flight when its post's author is erased is decided as removed (the erasure waited ${waited} ms)"
+else
+  echo "not ok - a notice in flight during an erasure: waited ${waited} ms, notices: ${decided:-none}"; fail=1
+fi
+
 exit "$fail"

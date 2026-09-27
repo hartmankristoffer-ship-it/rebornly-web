@@ -18,6 +18,8 @@
     'Do not share anybody else\'s personal information, and think twice before sharing your own.',
     'No selling, advertising, fundraising or spam.',
     'Nothing illegal, and nothing you do not have the right to share.',
+    // Owner, 27 September 2026: a request, not a binding confidentiality duty.
+    'Please don\'t share screenshots or details of unreleased features outside the forum.',
     'You must be 18 or older.',
     'Moderators may hide posts or suspend accounts that break these rules, and will tell you why. ' +
       'Use Report on a post that breaks them, or email support@rebornlyapp.com.',
@@ -57,6 +59,14 @@
     rate_limited: 'You are posting very quickly. Please wait a few minutes and try again.',
     cannot_suspend_moderator: 'A moderator cannot be suspended here.',
     read_only: 'The forum is read-only now. You can still read it and delete your own posts.',
+    invalid_kind: 'Please choose what the report is about.',
+    invalid_notice: 'Please explain why it is illegal, in 10 to 2,000 characters.',
+    notifier_name_required: 'Please give your name (2 to 100 characters), or tick that the notice concerns child sexual abuse material.',
+    good_faith_required: 'Please confirm that you make this notice in good faith.',
+    invalid_basis: 'Please name the forum rule or the law the decision rests on.',
+    invalid_source: 'Please say what the decision followed.',
+    already_hidden: 'This post is already hidden.',
+    already_suspended: 'This member is already suspended.',
     unavailable: 'Something went wrong. Please try again in a moment.',
   };
   MESSAGES.code_wait = 'Please wait a minute before asking for another code.';
@@ -224,6 +234,7 @@
     const n = ++seq;
     const parts = location.hash.replace(/^#\/?/, '').split('/').filter(Boolean);
     if (parts[0] === 'rules') return showRules();
+    if (parts[0] === 'notice') return showNotice();
     if (!BASE || !KEY) { bar.hidden = true; return showOff(); }
     if (!session) { bar.hidden = true; return showSignIn(); }
     try { me = await rpc('forum_me'); }
@@ -236,12 +247,18 @@
     renderBar();
     if (me.state === 'invited') return showJoin();
     if (me.state === 'not_invited') return showNotInvited();
-    if (me.state === 'suspended') return showSuspended();
+    if (me.state === 'suspended') {
+      if (parts[0] === 'reports' && parts.length === 1) return showMyReports(n);
+      if (parts[0] === 'posts' && parts.length === 1) return showMyPosts(n);
+      return showSuspended();
+    }
     if (parts.length === 0) return showHome(n);
     if (parts[0] === 'c' && SLUG.test(parts[1] || '') && parts[2] === 'new' && parts.length === 3) return showNewThread(n, parts[1]);
     if (parts[0] === 'c' && SLUG.test(parts[1] || '') && parts.length === 2) return showCategory(n, parts[1]);
     if (parts[0] === 't' && UUID.test(parts[1] || '') && parts.length === 2) return showThread(n, parts[1]);
     if (parts[0] === 'mod' && parts.length === 1 && me.moderator) return showModeration(n);
+    if (parts[0] === 'reports' && parts.length === 1) return showMyReports(n);
+    if (parts[0] === 'posts' && parts.length === 1) return showMyPosts(n);
     return showProblem('not_found');
   }
   window.addEventListener('hashchange', route);
@@ -257,6 +274,9 @@
         me.moderator ? h('span', { class: 'tag' }, 'Rebornly team') : null),
       me.state === 'member' ? h('a', { href: '#/' }, 'Forum') : null,
       me.state === 'member' && me.moderator ? h('a', { href: '#/mod' }, 'Moderation') : null,
+      me.state === 'member' || me.state === 'suspended' ? h('a', { href: '#/reports' },
+        me.reports_decided_unseen > 0 ? 'My reports (' + me.reports_decided_unseen + ' new)' : 'My reports') : null,
+      me.state === 'member' || me.state === 'suspended' ? h('a', { href: '#/posts' }, 'My posts') : null,
       h('a', { href: '#/rules' }, 'Rules'),
       out].filter(Boolean));
   }
@@ -275,7 +295,25 @@
     show(h('h1', {}, 'Forum rules'),
       h('p', { class: 'muted' }, 'Version ' + RULES_VERSION),
       h('ol', { class: 'rules' }, RULES.map((rule) => h('li', {}, rule))),
+      h('p', {}, 'To report illegal content, see ', h('a', { href: '#/notice' }, 'Report illegal content'), '.'),
       h('p', {}, h('a', { href: '#/' }, 'Back to the forum')));
+  }
+
+  // DSA Art. 16: how anyone, member or not, notifies illegal content.
+  function showNotice() {
+    show(h('h1', {}, 'Report illegal content'),
+      h('p', {}, 'If you are a member of the forum, use Report on the post and choose "It is illegal".'),
+      h('p', {}, 'Anyone else can send a notice by email to ',
+        h('a', { href: 'mailto:' + SUPPORT + '?subject=Notice%20of%20illegal%20content' }, SUPPORT),
+        '. So that we can act on it, include:'),
+      h('ol', { class: 'rules' },
+        h('li', {}, 'where the content is: a link to the thread, or its title and the author\'s forum name;'),
+        h('li', {}, 'why you believe it is illegal, as precisely as you can;'),
+        h('li', {}, 'your name and email address (not needed if the notice concerns child sexual abuse material);'),
+        h('li', {}, 'a statement that you believe in good faith that your notice is accurate and complete.')),
+      h('p', {}, 'We confirm that we have received your notice, a person looks at it (we use no automated means), ' +
+        'and we tell you what we decided and how to have it looked at again.'),
+      h('p', {}, h('a', { href: '#/rules' }, 'Forum rules'), ' · ', h('a', { href: '/terms/' }, 'Terms')));
   }
 
   function showSignIn() {
@@ -379,9 +417,11 @@
 
   function showSuspended() {
     show(h('h1', {}, 'Your forum account is suspended'),
-      h('p', {}, 'A moderator suspended your account for this reason:'),
-      h('p', { class: 'panel' }, me.suspended_reason || ''),
-      h('p', {}, 'If you think this is a mistake, email ', SUPPORT, '.'),
+      statementView(me.suspension || { facts: me.suspended_reason },
+        'A moderator suspended your forum account until a moderator lifts the suspension. ' +
+        'Meanwhile you cannot read or write in the forum.'),
+      h('p', {}, 'You can still see ', h('a', { href: '#/reports' }, 'your reports and their decisions'), ' and ',
+        h('a', { href: '#/posts' }, 'your posts'), ', and delete your own posts there.'),
       h('div', { class: 'buttons' }, h('button', { class: 'button secondary', type: 'button', on: { click: signOut } }, 'Sign out')));
   }
 
@@ -488,6 +528,125 @@
       form);
   }
 
+  // DSA Art. 17: what a member is told when a moderator restricts them.
+  const REDRESS = 'If you disagree, write to ' + SUPPORT + ' and a person will look at it again. ' +
+    'You can also take the matter to a court.';
+  const SOURCES = {
+    member_report: 'a report from a member',
+    email_notice: 'a notice sent to us by email',
+    own_initiative: 'the moderators\' own review',
+  };
+  const ruleText = (reference) => {
+    const match = /^Forum rule (\d+)$/.exec(reference || '');
+    return match && RULES[Number(match[1]) - 1] ? reference + ': ' + RULES[Number(match[1]) - 1] : reference;
+  };
+
+  function statementView(d, restriction) {
+    const lines = [h('p', {}, h('strong', {}, restriction))];
+    if (d && d.basis_reference) {
+      lines.push(h('p', {}, 'Ground: ', d.basis === 'illegal' ? 'the law, ' + d.basis_reference : ruleText(d.basis_reference)));
+    }
+    if (d && d.facts) lines.push(h('p', {}, 'What happened: ', d.facts));
+    if (d && d.source) {
+      lines.push(h('p', {}, 'This followed ', SOURCES[d.source] || 'a review', d.decided_at ? ', on ' + when(d.decided_at) : '',
+        '. No automated means were used.'));
+    }
+    lines.push(h('p', {}, REDRESS));
+    return h('div', { class: 'notice statement' }, lines);
+  }
+
+  // A moderator's decision: the ground (a forum rule or the law), what
+  // happened, and what the decision followed. The member reads all of it.
+  function decisionForm(slot, what, submitText, reportId, onSubmit) {
+    const status = statusLine();
+    const basis = h('select', { 'aria-label': 'Ground' },
+      h('option', { value: 'rules' }, 'The forum rules'),
+      h('option', { value: 'illegal' }, 'The law'));
+    const rule = h('select', { 'aria-label': 'Which rule' },
+      RULES.map((text, i) => h('option', { value: 'Forum rule ' + (i + 1) }, (i + 1) + '. ' + text.slice(0, 70))),
+      h('option', { value: 'Terms of Service §3a' }, 'Terms of Service §3a'));
+    const law = h('input', { type: 'text', maxlength: '200', 'aria-label': 'Which law', hidden: true,
+      placeholder: 'Which law, and which provision' });
+    basis.addEventListener('change', () => {
+      rule.hidden = basis.value !== 'rules';
+      law.hidden = basis.value !== 'illegal';
+    });
+    const facts = h('textarea', { maxlength: '500', rows: '3', 'aria-label': 'What happened' });
+    const source = reportId ? null : h('select', { 'aria-label': 'What it followed' },
+      h('option', { value: 'own_initiative' }, 'Our own review'),
+      h('option', { value: 'email_notice' }, 'A notice sent by email'));
+    const go = h('button', { class: 'button', type: 'submit' }, submitText);
+    slot.replaceChildren(h('form', { class: 'form', novalidate: true, on: { submit: async (event) => {
+      event.preventDefault();
+      await busy(go, status, () => onSubmit({
+        reason: facts.value,
+        basis: basis.value,
+        reference: basis.value === 'rules' ? rule.value : law.value,
+        source: reportId ? 'member_report' : source.value,
+      }));
+    } } },
+      h('p', { class: 'hint' }, 'The member will see all of this about ', what, '.'),
+      h('label', {}, 'Ground'), basis, rule, law,
+      h('label', {}, 'What happened'), facts,
+      source ? [h('label', {}, 'What it followed'), source] : h('p', { class: 'hint' }, 'It follows the member\'s report.'),
+      h('div', { class: 'buttons' }, go,
+        h('button', { type: 'button', class: 'link', on: { click: () => slot.replaceChildren() } }, 'Cancel')),
+      status));
+    facts.focus();
+  }
+
+  // DSA Art. 16: a member's report is about the rules or about illegal content.
+  function reportForm(slot, postId) {
+    const status = statusLine();
+    const rules = h('input', { type: 'radio', name: 'kind-' + postId, value: 'rules', checked: true });
+    const illegal = h('input', { type: 'radio', name: 'kind-' + postId, value: 'illegal' });
+    const reason = h('textarea', { maxlength: '500', rows: '3', 'aria-label': 'Why' });
+    const faith = h('input', { type: 'checkbox' });
+    const faithLine = h('label', { class: 'check', hidden: true }, faith,
+      h('span', {}, 'I believe in good faith that this notice is accurate and complete.'));
+    // DSA Art. 16(2)(c): the notifier's name (their email is the account's).
+    const name = h('input', { type: 'text', maxlength: '100', autocomplete: 'name', 'aria-label': 'Your name' });
+    const csam = h('input', { type: 'checkbox' });
+    const nameLines = h('div', { hidden: true },
+      h('label', {}, 'Your name'), name,
+      h('p', { class: 'hint' }, 'Your email address is the one you signed in with. Our decision will be under My reports.'),
+      h('label', { class: 'check' }, csam,
+        h('span', {}, 'It concerns child sexual abuse material (your name is then not needed).')));
+    const label = h('label', {}, 'Which rule does it break, and how?');
+    const sync = () => {
+      faithLine.hidden = !illegal.checked;
+      nameLines.hidden = !illegal.checked;
+      reason.maxLength = illegal.checked ? 2000 : 500;
+      label.textContent = illegal.checked ? 'Why is it illegal? Explain as precisely as you can.'
+                                          : 'Which rule does it break, and how?';
+    };
+    rules.addEventListener('change', sync);
+    illegal.addEventListener('change', sync);
+    const go = h('button', { class: 'button', type: 'submit' }, 'Send report');
+    slot.replaceChildren(h('form', { class: 'form', novalidate: true, on: { submit: async (event) => {
+      event.preventDefault();
+      if (illegal.checked && !faith.checked) return say(status, message('good_faith_required'), true);
+      if (illegal.checked && !csam.checked && name.value.trim().length < 2) {
+        return say(status, message('notifier_name_required'), true);
+      }
+      if (await busy(go, status, () => rpc('forum_report_post', {
+        p_post_id: postId, p_reason: reason.value,
+        p_kind: illegal.checked ? 'illegal' : 'rules', p_good_faith: illegal.checked && faith.checked,
+        p_notifier_name: illegal.checked ? name.value : null, p_csam: illegal.checked && csam.checked,
+      }))) {
+        slot.replaceChildren(h('p', { class: 'muted' }, 'Received. You will find the decision under ',
+          h('a', { href: '#/reports' }, 'My reports'), '.'));
+      }
+    } } },
+      h('label', { class: 'check' }, rules, h('span', {}, 'It breaks the forum rules')),
+      h('label', { class: 'check' }, illegal, h('span', {}, 'It is illegal')),
+      label, reason, nameLines, faithLine,
+      h('div', { class: 'buttons' }, go,
+        h('button', { type: 'button', class: 'link', on: { click: () => slot.replaceChildren() } }, 'Cancel')),
+      status));
+    reason.focus();
+  }
+
   // A small form asking for a reason, shown in place under a post.
   function reasonForm(slot, label, submitText, onSubmit) {
     const status = statusLine();
@@ -512,10 +671,14 @@
     if (p.deleted) content.push(h('p', { class: 'gone' }, 'Deleted by its author.'));
     else if (p.hidden && p.body == null) content.push(h('p', { class: 'gone' }, 'Removed by a moderator.'));
     else {
-      if (p.hidden) {
-        content.push(h('p', { class: 'notice' }, p.mine
-          ? ['A moderator hid this post: ', p.hidden_reason || '', '. Only you and the moderators can see it.']
-          : ['Hidden for members: ', p.hidden_reason || '']));
+      if (p.hidden && p.mine) {
+        content.push(statementView(p.decision || { facts: p.hidden_reason },
+          'A moderator hid this ' + (p.opening ? 'thread' : 'post') + '. Only you and the moderators can see it, ' +
+          'until a moderator restores it.'));
+      } else if (p.hidden) {
+        content.push(h('p', { class: 'notice' }, 'Hidden for members. ',
+          p.decision && p.decision.basis_reference ? ['Ground: ', p.decision.basis_reference, '. '] : null,
+          p.hidden_reason || ''));
       }
       content.push(h('p', { class: 'body' }, p.body));
     }
@@ -532,11 +695,7 @@
       } } }, 'Delete'));
     }
     if (!p.mine && !p.deleted && !p.hidden && !me.moderator) {
-      actions.push(h('button', { type: 'button', class: 'link', on: { click: () =>
-        reasonForm(slot, 'Why are you reporting this post?', 'Send report', async (reason) => {
-          await rpc('forum_report_post', { p_post_id: p.id, p_reason: reason });
-          slot.replaceChildren(h('p', { class: 'muted' }, 'Thank you. The moderators will look at it.'));
-        }) } }, 'Report'));
+      actions.push(h('button', { type: 'button', class: 'link', on: { click: () => reportForm(slot, p.id) } }, 'Report'));
     }
     if (me.moderator && !p.deleted) {
       actions.push(p.hidden
@@ -544,12 +703,11 @@
             if (await busy(event.currentTarget, status, () => rpc('forum_mod_unhide_post', { p_post_id: p.id }))) reload();
           } } }, 'Restore')
         : h('button', { type: 'button', class: 'link danger', on: { click: () =>
-            reasonForm(slot, p.opening ? 'Why is this thread being hidden? Its author will see this.'
-                                       : 'Why is this post being hidden? Its author will see this.',
-              'Hide', async (reason) => {
-                await rpc('forum_mod_hide_post', { p_post_id: p.id, p_reason: reason });
-                reload();
-              }) } }, p.opening ? 'Hide thread' : 'Hide'));
+            decisionForm(slot, p.opening ? 'hiding this thread' : 'hiding this post', 'Hide', null, async (d) => {
+              await rpc('forum_mod_hide_post', { p_post_id: p.id, p_reason: d.reason, p_basis: d.basis,
+                p_basis_reference: d.reference, p_source: d.source });
+              reload();
+            }) } }, p.opening ? 'Hide thread' : 'Hide'));
     }
     return h('article', { class: 'post' + (p.hidden ? ' is-hidden' : ''), id: 'post-' + p.id },
       h('header', {},
@@ -640,18 +798,18 @@
       reply = h('p', { class: 'muted' }, 'This thread is locked. No new replies can be posted.');
     }
 
-    // Each fact once: a hidden thread is explained by one panel (with the
-    // reason for its author and the moderators), or, for someone who only
-    // replied in it, by its heading and one line.
+    // Each fact once: for its author and the moderators, a hidden thread is
+    // explained by its opening post (the statement of reasons); for someone
+    // who only replied in it, by its heading and one line.
     show(h('p', { class: 'crumbs' }, h('a', { href: '#/' }, 'Forum'), ' › ', h('a', { href: '#/c/' + t.category.slug }, t.category.title)),
       h('h1', {}, t.title || (t.hidden ? 'Hidden by a moderator' : 'Deleted by its author')),
       readOnlyNote(),
       t.pinned || t.locked ? h('p', { class: 'muted' },
         t.pinned ? h('span', { class: 'tag' }, 'Pinned') : null,
         t.locked ? h('span', { class: 'tag' }, 'Locked') : null) : null,
-      t.hidden && t.hidden_reason ? h('p', { class: 'panel' }, 'A moderator hid this thread: ', t.hidden_reason,
-        '. Only its author and the moderators can see it.') : null,
-      t.hidden && !t.title ? h('p', { class: 'panel' }, 'You still see your own replies here and can delete them.') : null,
+      t.hidden && !t.title ? h('p', { class: 'panel' }, 'A moderator hid the thread your replies are in, ' +
+        'so other members no longer see them until a moderator restores the thread. You still see them here and ' +
+        'can delete them. ' + REDRESS) : null,
       tools, posts,
       h('div', { class: 'buttons' }, more), status,
       reply);
@@ -679,19 +837,23 @@
         h('p', { class: 'body' }, r.post_deleted ? '(deleted by its author)' : r.excerpt || ''),
         h('p', { class: 'muted' }, 'Post by ', r.post_author.name || 'a former member',
           r.post_hidden ? ' · already hidden' : ''),
-        h('p', {}, 'Reported by ', r.reporter.name || 'a former member', ' on ', when(r.created_at), ': ', r.reason),
+        h('p', {}, h('span', { class: 'tag' }, r.kind === 'illegal' ? 'Illegal content' : 'Forum rules'),
+          r.csam ? h('span', { class: 'tag' }, 'Child sexual abuse material: report to the police') : null,
+          r.kind === 'illegal' && r.good_faith ? ' In good faith.' : null),
+        h('p', {}, 'Reported by ', r.reporter.name || 'a former member',
+          r.notifier_name ? ' (' + r.notifier_name + ')' : '', ' on ', when(r.created_at), ': ', r.reason),
         h('div', { class: 'actions' },
           !r.post_hidden && !r.post_deleted ? h('button', { type: 'button', class: 'link danger', on: { click: () =>
-            reasonForm(slot, 'Why is this post being hidden? Its author will see this.', 'Hide', async (reason) => {
-              await rpc('forum_mod_hide_post', { p_post_id: r.post_id, p_reason: reason });
-              await rpc('forum_mod_resolve_report', { p_report_id: r.id, p_resolution: 'Hidden: ' + reason });
+            decisionForm(slot, 'hiding this post', 'Hide and decide', r.id, async (d) => {
+              await rpc('forum_mod_hide_post', { p_post_id: r.post_id, p_reason: d.reason, p_basis: d.basis,
+                p_basis_reference: d.reference, p_source: 'member_report', p_report_id: r.id });
               again();
-            }) } }, 'Hide post and resolve') : null,
+            }) } }, 'Hide the post') : null,
           h('button', { type: 'button', class: 'link', on: { click: () =>
-            reasonForm(slot, 'What did you decide?', 'Resolve', async (note) => {
+            reasonForm(slot, 'Why no action? The member who reported reads this.', 'Decide: no action', async (note) => {
               await rpc('forum_mod_resolve_report', { p_report_id: r.id, p_resolution: note });
               again();
-            }) } }, 'Resolve')),
+            }) } }, 'No action')),
         slot, status);
     }) : [h('p', { class: 'muted' }, 'No open reports.')];
 
@@ -723,8 +885,9 @@
       let action = null;
       if (!m.moderator && m.status === 'active') {
         action = h('button', { type: 'button', class: 'link danger', on: { click: () =>
-          reasonForm(slot, 'Why is ' + m.display_name + ' being suspended? They will see this.', 'Suspend', async (reason) => {
-            await rpc('forum_mod_suspend', { p_user_id: m.user_id, p_reason: reason });
+          decisionForm(slot, 'suspending ' + m.display_name, 'Suspend', null, async (d) => {
+            await rpc('forum_mod_suspend', { p_user_id: m.user_id, p_reason: d.reason, p_basis: d.basis,
+              p_basis_reference: d.reference, p_source: d.source });
             again();
           }) } }, 'Suspend');
       } else if (m.status === 'suspended') {
@@ -750,6 +913,56 @@
       h('table', { class: 'table' },
         h('thead', {}, h('tr', {}, h('th', {}, 'Name'), h('th', {}, 'Email'), h('th', {}, 'Status'), h('th', {}, ''))),
         h('tbody', {}, memberRows)));
+  }
+
+  async function showMyReports(n) {
+    const reports = await load(n, 'forum_my_reports');
+    if (!reports || !current(n)) return;
+    const shown = reports.filter((r) => r.decided && !r.seen).map((r) => r.id);
+    if (shown.length) {
+      rpc('forum_mark_reports_seen', { p_ids: shown })
+        .then(() => { me.reports_decided_unseen = Math.max(0, (me.reports_decided_unseen || 0) - shown.length); renderBar(); })
+        .catch(() => {});
+    }
+    show(h('p', { class: 'crumbs' }, h('a', { href: '#/' }, 'Forum')),
+      h('h1', {}, 'My reports'),
+      reports.length ? reports.map((r) => h('div', { class: 'panel' },
+        h('p', {}, h('span', { class: 'tag' }, r.kind === 'illegal' ? 'Illegal content' : 'Forum rules'),
+          r.decided && !r.seen ? h('span', { class: 'tag' }, 'New decision') : null),
+        h('p', {}, r.thread_id ? h('a', { href: '#/t/' + r.thread_id }, r.thread_title || 'A thread')
+                               : 'A post you can no longer see'),
+        h('p', { class: 'muted' }, 'Received ', when(r.created_at), '. Your report: ', r.reason),
+        r.decided
+          ? [h('p', {}, h('strong', {}, 'Decision: '),
+               r.decision || (r.action === 'hidden' ? 'The post was hidden.' : r.action === 'removed' ? 'The post was removed.' : 'No action.')),
+             h('p', { class: 'muted' }, 'Decided ', when(r.decided_at), '. No automated means were used. ', REDRESS)]
+          : h('p', {}, 'Waiting for a decision.')))
+        : h('p', { class: 'muted' }, 'You have not reported anything.'));
+  }
+
+  // My posts: every post of the member's, newest first; a hidden one with its
+  // statement of reasons. A suspended member deletes their posts here.
+  async function showMyPosts(n) {
+    const posts = await load(n, 'forum_my_posts');
+    if (!posts || !current(n)) return;
+    const again = () => showMyPosts(seq);
+    show(h('p', { class: 'crumbs' }, h('a', { href: '#/' }, 'Forum')),
+      h('h1', {}, 'My posts'),
+      posts.length ? posts.map((p) => {
+        const status = statusLine();
+        return h('div', { class: 'panel' },
+          h('p', { class: 'muted' },
+            p.thread_id ? h('a', { href: '#/t/' + p.thread_id }, p.thread_title || 'A thread') : (p.thread_title || 'A thread'),
+            ' · ', when(p.created_at)),
+          p.hidden ? statementView(p.decision, 'A moderator hid this ' + (p.opening ? 'thread' : 'post') +
+            '. Only you and the moderators can see it, until a moderator restores it.') : null,
+          h('p', { class: 'body' }, p.body || ''),
+          h('div', { class: 'actions' }, h('button', { type: 'button', class: 'link danger', on: { click: async (event) => {
+            if (!window.confirm('Delete this post? This cannot be undone.')) return;
+            if (await busy(event.currentTarget, status, () => rpc('forum_delete_post', { p_post_id: p.id }))) again();
+          } } }, 'Delete')),
+          status);
+      }) : h('p', { class: 'muted' }, 'You have not written anything yet.'));
   }
 
   if (BASE && KEY) app.replaceChildren(h('p', { class: 'muted' }, 'Loading…'));

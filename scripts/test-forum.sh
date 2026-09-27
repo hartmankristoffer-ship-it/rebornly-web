@@ -7,10 +7,24 @@
 set -euo pipefail
 export MSYS_NO_PATHCONV=1
 
-IMAGE="${FORUM_TEST_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.171}"
 NAME="${FORUM_TEST_CONTAINER:-rebornly-forum-test}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"   # relative paths: docker cp cannot read MSYS-style /c/... paths
+
+# supabase/postgres 17.6.1.171, pinned by digest: the same image on Docker Hub
+# and on AWS ECR Public. ECR refused CI's anonymous pulls with "toomanyrequests"
+# (rebornly-web PR #15), so Docker Hub comes first, ECR second, a few tries each.
+DIGEST=sha256:658d1c9b09ae4f61b8e95087b6859181b4b7d6940d769cf7b605609c8aad43e9
+IMAGE="${FORUM_TEST_IMAGE:-}"
+if [ -z "$IMAGE" ]; then
+  for attempt in 1 2 3; do
+    for ref in "supabase/postgres:17.6.1.171@$DIGEST" "public.ecr.aws/supabase/postgres:17.6.1.171@$DIGEST"; do
+      if docker pull -q "$ref" >/dev/null; then IMAGE="$ref"; break 2; fi
+    done
+    sleep $((attempt * 20))
+  done
+  [ -n "$IMAGE" ] || { echo "not ok - the test image could not be pulled from Docker Hub or ECR"; exit 1; }
+fi
 
 cleanup() { [ "${KEEP:-0}" = "1" ] || docker rm -f "$NAME" >/dev/null 2>&1 || true; }
 trap cleanup EXIT

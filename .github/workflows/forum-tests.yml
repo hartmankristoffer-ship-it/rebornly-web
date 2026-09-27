@@ -1,6 +1,9 @@
-# WEB-02: the beta forum's database tests. This repository is public, so the
-# run costs nothing. It starts a throwaway supabase/postgres container, applies
-# supabase/migrations and runs supabase/tests with pgTAP.
+# WEB-02 / WEB-03: the beta forum's checks. This repository is public, so the
+# runs cost nothing.
+#   pgtap: a throwaway supabase/postgres container, supabase/migrations applied,
+#          supabase/tests run with pgTAP, plus the read-only and race probes.
+#   site:  no legal page ships an unfilled date, the three pages share one
+#          version, and the forum's address and its CSP agree.
 name: Forum tests
 
 on:
@@ -8,8 +11,11 @@ on:
     paths:
       - 'supabase/**'
       - 'scripts/test-forum.sh'
-      # test-forum.sh also checks the rules version in forum.js.
-      - 'forum/forum.js'
+      - 'scripts/check-site-texts.sh'
+      - 'forum/**'
+      - 'privacy/**'
+      - 'cookies/**'
+      - 'terms/**'
       - '.github/workflows/forum-tests.yml'
   workflow_dispatch:
 
@@ -24,3 +30,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run the forum pgTAP suite
         run: bash scripts/test-forum.sh
+
+  site:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the legal pages and the forum's switch
+        run: bash scripts/check-site-texts.sh
