@@ -248,7 +248,7 @@
     if (me.state === 'not_invited') return showNotInvited();
     if (me.state === 'suspended') {
       if (parts[0] === 'reports' && parts.length === 1) return showMyReports(n);
-      if (parts[0] === 'hidden' && parts.length === 1) return showMyHidden(n);
+      if (parts[0] === 'posts' && parts.length === 1) return showMyPosts(n);
       return showSuspended();
     }
     if (parts.length === 0) return showHome(n);
@@ -257,7 +257,7 @@
     if (parts[0] === 't' && UUID.test(parts[1] || '') && parts.length === 2) return showThread(n, parts[1]);
     if (parts[0] === 'mod' && parts.length === 1 && me.moderator) return showModeration(n);
     if (parts[0] === 'reports' && parts.length === 1) return showMyReports(n);
-    if (parts[0] === 'hidden' && parts.length === 1) return showMyHidden(n);
+    if (parts[0] === 'posts' && parts.length === 1) return showMyPosts(n);
     return showProblem('not_found');
   }
   window.addEventListener('hashchange', route);
@@ -275,6 +275,7 @@
       me.state === 'member' && me.moderator ? h('a', { href: '#/mod' }, 'Moderation') : null,
       me.state === 'member' || me.state === 'suspended' ? h('a', { href: '#/reports' },
         me.reports_decided_unseen > 0 ? 'My reports (' + me.reports_decided_unseen + ' new)' : 'My reports') : null,
+      me.state === 'member' || me.state === 'suspended' ? h('a', { href: '#/posts' }, 'My posts') : null,
       h('a', { href: '#/rules' }, 'Rules'),
       out].filter(Boolean));
   }
@@ -419,7 +420,7 @@
         'A moderator suspended your forum account until a moderator lifts the suspension. ' +
         'Meanwhile you cannot read or write in the forum.'),
       h('p', {}, 'You can still see ', h('a', { href: '#/reports' }, 'your reports and their decisions'), ' and ',
-        h('a', { href: '#/hidden' }, 'your hidden posts'), ', and delete your own posts there.'),
+        h('a', { href: '#/posts' }, 'your posts'), ', and delete your own posts there.'),
       h('div', { class: 'buttons' }, h('button', { class: 'button secondary', type: 'button', on: { click: signOut } }, 'Sign out')));
   }
 
@@ -923,25 +924,29 @@
         : h('p', { class: 'muted' }, 'You have not reported anything.'));
   }
 
-  async function showMyHidden(n) {
-    const posts = await load(n, 'forum_my_hidden_posts');
+  // My posts: every post of the member's, newest first; a hidden one with its
+  // statement of reasons. A suspended member deletes their posts here.
+  async function showMyPosts(n) {
+    const posts = await load(n, 'forum_my_posts');
     if (!posts || !current(n)) return;
-    const again = () => showMyHidden(seq);
+    const again = () => showMyPosts(seq);
     show(h('p', { class: 'crumbs' }, h('a', { href: '#/' }, 'Forum')),
-      h('h1', {}, 'My hidden posts'),
+      h('h1', {}, 'My posts'),
       posts.length ? posts.map((p) => {
         const status = statusLine();
         return h('div', { class: 'panel' },
-          h('p', { class: 'muted' }, p.thread_title || 'A thread', ' · ', when(p.created_at)),
-          statementView(p.decision, 'A moderator hid this ' + (p.opening ? 'thread' : 'post') +
-            '. Only you and the moderators can see it, until a moderator restores it.'),
+          h('p', { class: 'muted' },
+            p.thread_id ? h('a', { href: '#/t/' + p.thread_id }, p.thread_title || 'A thread') : (p.thread_title || 'A thread'),
+            ' · ', when(p.created_at)),
+          p.hidden ? statementView(p.decision, 'A moderator hid this ' + (p.opening ? 'thread' : 'post') +
+            '. Only you and the moderators can see it, until a moderator restores it.') : null,
           h('p', { class: 'body' }, p.body || ''),
           h('div', { class: 'actions' }, h('button', { type: 'button', class: 'link danger', on: { click: async (event) => {
             if (!window.confirm('Delete this post? This cannot be undone.')) return;
             if (await busy(event.currentTarget, status, () => rpc('forum_delete_post', { p_post_id: p.id }))) again();
           } } }, 'Delete')),
           status);
-      }) : h('p', { class: 'muted' }, 'None of your posts is hidden.'));
+      }) : h('p', { class: 'muted' }, 'You have not written anything yet.'));
   }
 
   if (BASE && KEY) app.replaceChildren(h('p', { class: 'muted' }, 'Loading…'));

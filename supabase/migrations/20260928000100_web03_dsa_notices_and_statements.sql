@@ -136,6 +136,14 @@ begin
 end;
 $$;
 
+create function forum.own_record_title(t forum.threads, m forum.members) returns text
+language sql stable set search_path = '' as $$
+  select case
+    when t.author_id = m.user_id then nullif(t.title, '')
+    when m.status = 'active' and forum.thread_visible(t, m) then forum.thread_title(t, m)
+  end
+$$;
+
 -- A decision as its member (or a moderator) sees it: the statement of reasons.
 create function forum.decision_json(p_id uuid) returns jsonb
 language sql stable set search_path = '' as $$
@@ -291,8 +299,8 @@ begin
              'kind', r.kind,
              'reason', r.reason,
              'created_at', r.created_at,
-             'thread_id', case when forum.thread_visible(t, m) then t.id end,
-             'thread_title', case when forum.thread_visible(t, m) then forum.thread_title(t, m) end,
+             'thread_id', case when m.status = 'active' and forum.thread_visible(t, m) then t.id end,
+             'thread_title', forum.own_record_title(t, m),
              'decided', r.resolved_at is not null,
              'decided_at', r.resolved_at,
              'action', r.resolution_action,
@@ -319,25 +327,34 @@ begin
 end;
 $$;
 
--- The member's own hidden posts, each with its statement of reasons. A
--- suspended member reads this too (they cannot open the threads).
-create function public.forum_my_hidden_posts() returns jsonb
+-- My posts: every post of the member's that is not deleted, hidden or not,
+-- each hidden one with its statement of reasons. It is how a suspended member
+-- deletes their own posts, and how anyone keeps sight of their replies in a
+-- thread they can no longer open. Newest first, at most 500.
+create function public.forum_my_posts() returns jsonb
 language plpgsql stable security definer set search_path = '' as $$
 declare
   m forum.members := forum.require_self_reader();
 begin
   return coalesce((
-    select jsonb_agg(jsonb_build_object(
-             'id', p.id,
-             'opening', p.is_opening,
-             'thread_title', forum.thread_title(t, m),
-             'body', nullif(p.body, ''),
-             'created_at', p.created_at,
-             'decision', forum.decision_json(p.hidden_decision_id))
-           order by p.seq)
-    from forum.posts p
-    join forum.threads t on t.id = p.thread_id
-    where p.author_id = m.user_id and p.hidden_at is not null and p.deleted_at is null), '[]'::jsonb);
+    select jsonb_agg(row_json order by seq desc)
+    from (
+      select p.seq,
+             jsonb_build_object(
+               'id', p.id,
+               'opening', p.is_opening,
+               'thread_id', case when m.status = 'active' and forum.thread_visible(t, m) then t.id end,
+               'thread_title', forum.own_record_title(t, m),
+               'body', p.body,
+               'created_at', p.created_at,
+               'hidden', p.hidden_at is not null,
+               'decision', case when p.hidden_at is not null then forum.decision_json(p.hidden_decision_id) end) as row_json
+      from forum.posts p
+      join forum.threads t on t.id = p.thread_id
+      where p.author_id = m.user_id and p.deleted_at is null
+      order by p.seq desc
+      limit 500
+    ) mine), '[]'::jsonb);
 end;
 $$;
 
@@ -676,13 +693,6 @@ begin
 
   select count(*) into v_posts from forum.posts where author_id = v_uid and deleted_at is null;
   delete from forum.reports where reporter_id = v_uid;
-  -- Other members' notices about this member's posts are theirs, and the law
-  -- owes them a decision (DSA Art. 16(5)): the open ones are decided now.
-  update forum.reports
-     set resolved_at = now(), resolution_action = 'removed', decision_seen_at = null,
-         resolution = 'The post was removed when its author''s account was deleted.'
-   where resolved_at is null
-     and post_id in (select id from forum.posts where author_id = v_uid);
   update forum.decisions
      set facts = 'Erased on request', basis_reference = 'Erased on request', member_id = null
    where member_id = v_uid;
@@ -699,6 +709,14 @@ begin
          hidden_reason = case when hidden_at is not null then 'Erased on request' end,
          hidden_by = null
    where author_id = v_uid;
+  -- Other members' notices about this member's posts are theirs, and the law
+  -- owes them a decision (DSA Art. 16(5)): the open ones are decided now. This
+  -- runs after the wipe above, which waited for any notice being filed.
+  update forum.reports
+     set resolved_at = now(), resolution_action = 'removed', decision_seen_at = null,
+         resolution = 'The post was removed when its author''s account was deleted.'
+   where resolved_at is null
+     and post_id in (select id from forum.posts where author_id = v_uid);
   -- If the person was a moderator, their id leaves the records they touched.
   update forum.threads set hidden_by = null where hidden_by = v_uid;
   update forum.posts set hidden_by = null where hidden_by = v_uid;

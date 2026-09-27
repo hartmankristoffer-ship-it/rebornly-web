@@ -56,8 +56,9 @@ app.
     or the law), the facts, what the decision followed, and when it was lifted.
     The member it concerns sees all of it, that no automated means were used,
     and how to ask for another look.
-  - A suspended member still reaches their reports, their hidden posts and
-    deleting their own posts (`forum.require_self_*`).
+  - A suspended member still reaches My reports and My posts (every post of
+    theirs, hidden ones with their statement), and can delete their own posts
+    (`forum.require_self_*`). Their records name no other member's thread.
 - **Reads never lock.** The Data API runs a `STABLE` function in a read-only
   transaction, so the read functions check membership without a lock.
   `supabase/tests/read_only_calls.sh` runs every one of them in a real

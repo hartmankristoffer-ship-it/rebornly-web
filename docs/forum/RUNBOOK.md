@@ -153,8 +153,8 @@ browser (Edge, Firefox) as B.
   and what it followed. They see all of it.
 - The member always sees that no automated means were used and how to ask for
   another look. Nothing in the forum decides by itself.
-- A suspended member still sees their reports and their hidden posts, and can
-  delete their own posts.
+- A suspended member still sees their reports (My reports) and their posts
+  (My posts), and can delete their own posts.
 - **If anything in the forum suggests a threat to someone's life or safety**,
   whether from a report, an email or your own reading, report it to the police
   at once (DSA Art. 18).
@@ -201,8 +201,13 @@ In the SQL Editor:
   is decided as "removed", and its reporter sees that under My reports. A reply
   of theirs you had hidden stays hidden.
 - For both requests, also search the support mailbox for notices of illegal
-  content the person sent or that name them (section 8b). Include those in the
-  copy, or delete them.
+  content (section 8b):
+  - **Notices the person sent:** include them in the copy. On erasure, delete
+    them once you have told them your decision.
+  - **Notices others sent that name the person:** for a copy, give the content
+    without the sender's name or address (GDPR Art. 15(4)). On erasure, keep
+    them: you must keep a notice until the forum is deleted, as the Privacy
+    Policy says.
 - Never delete a member from the Authentication → Users page instead: that
   removes the account but leaves the texts they wrote.
 
