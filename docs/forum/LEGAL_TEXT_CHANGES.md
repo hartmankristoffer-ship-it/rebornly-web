@@ -9,6 +9,16 @@ Markdown source in the app repository (`docs/legal/website/*.md`, a small docs
 PR there) and the pages here (`/privacy/`, `/cookies/`, `/terms/`), as
 Version 1.1 with a new effective date.
 
+**One Version 1.1, not two in a row.** WEB-01 has already planned a Privacy
+Policy 1.1 that removes the sentence saying the form is not switched on yet,
+now that sign-up is live. That change and the forum changes below go out
+together in the same 1.1, in both repositories.
+
+**Production, at the moment 1.1 is published (owner):** set the Edge Function
+secret `REBORNLY_WEBSITE_PRIVACY_POLICY_VERSION` to `1.1` for `website-intake`
+in the Production project, so new beta sign-ups record the version in force.
+The forum's own project does not use that secret.
+
 ## Two decisions for the owner
 
 1. **Is forum content confidential?** Recommended: a *request* in the forum
