@@ -1,0 +1,26 @@
+# WEB-02: the beta forum's database tests. This repository is public, so the
+# run costs nothing. It starts a throwaway supabase/postgres container, applies
+# supabase/migrations and runs supabase/tests with pgTAP.
+name: Forum tests
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/**'
+      - 'scripts/test-forum.sh'
+      # test-forum.sh also checks the rules version in forum.js.
+      - 'forum/forum.js'
+      - '.github/workflows/forum-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pgtap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run the forum pgTAP suite
+        run: bash scripts/test-forum.sh
