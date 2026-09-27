@@ -75,8 +75,8 @@
       on your device in other ways. This policy explains how rebornlyapp.com uses them.</p>
       <h2>2. No analytics or marketing cookies</h2>
       <p>Rebornly does not set analytics or marketing cookies. The website code stores
-      nothing on your device and reads nothing from it, with one exception that you
-      choose yourself: signing in to the beta forum (section 2a).</p>
+      nothing on your device, with one exception that you choose yourself: signing in
+      to the beta forum (section 2a).</p>
       <ul>
       <li><strong>No advertising or tracking cookies.</strong></li>
       <li><strong>No analytics cookies.</strong> We count visits through our shared links, opens of
@@ -92,7 +92,9 @@
       <p>When you sign in to the beta forum at rebornlyapp.com/forum/, the website keeps
       your sign-in session in your browser's <strong>local storage</strong>, under the name
       <code>rebornly.forum.session</code>, so that you stay signed in on that device. It holds
-      the tokens that prove you signed in, and nothing else.</p>
+      your access token, your refresh token and the time the access token expires.
+      Each time you open the forum page, it checks whether this entry exists, so that
+      it can keep you signed in.</p>
       <p>This is <strong>strictly necessary</strong> for the forum you asked to use, so it needs no
       consent. It is removed when you sign out, and you can also clear it by clearing
       the site's data in your browser, which signs you out. If you do not sign in to

@@ -29,6 +29,7 @@ declare -A CALLS=(
   [forum_threads]="select public.forum_threads('general')"
   [forum_thread]="select public.forum_thread('$THREAD')"
   [forum_mod_reports]="select public.forum_mod_reports()"
+  [forum_my_reports]="select public.forum_my_reports()"
   [forum_mod_invitations]="select public.forum_mod_invitations()"
   [forum_mod_members]="select public.forum_mod_members()"
 )

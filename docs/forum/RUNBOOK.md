@@ -17,8 +17,9 @@ Placeholders are written like `<this>`.
 ## 2. The database
 
 1. **SQL Editor** → New query → paste the whole file
-   `supabase/migrations/20260927000100_web02_beta_forum.sql` → **Run**. It should
-   finish without an error.
+   `supabase/migrations/20260927000100_web02_beta_forum.sql` → **Run**. Then do
+   the same with `supabase/migrations/20260928000100_web03_dsa_notices_and_statements.sql`.
+   Run them in that order. Both should finish without an error.
 2. Invite yourself (one line, your own address):
 
    ```sql
@@ -142,9 +143,45 @@ browser (Edge, Firefox) as B.
 - **Invite:** Moderation → *Invite an email address*. This only lets the address
   sign in; write to the person yourself and send them to
   `https://rebornlyapp.com/forum/`.
-- **Reports** show under Moderation. Hide the post with a reason (the author
-  sees it) or resolve the report with a note.
-- **Suspend** a member under Moderation → Members, with a reason they will see.
+- **Reports** show under Moderation, marked *Forum rules* or *Illegal
+  content*. Look at them at least once a day during the beta. Either:
+  - *Hide the post*: choose the ground (a forum rule, or the law with its
+    provision) and write what happened. The author sees all of it, and so does
+    the reporter's decision.
+  - *No action*: write why. The member who reported reads it under My reports.
+- **Suspend** a member under Moderation → Members: the ground, what happened,
+  and what it followed. They see all of it.
+- The member always sees that no automated means were used and how to ask for
+  another look. Nothing in the forum decides by itself.
+
+## 8b. Notices of illegal content by email (EU Digital Services Act, Art. 16)
+
+Anyone can send one to support@rebornlyapp.com, as described on
+`rebornlyapp.com/forum/#/notice`. For each notice:
+
+1. **Confirm receipt** the same or the next working day:
+
+   > Thank you. We have received your notice about content in the Rebornly
+   > beta forum. A person will look at it, and we will tell you what we decide.
+
+2. **Look at it yourself.** If the notice says where the content is and why it
+   is illegal, you can act on it. Ask the sender for anything missing.
+3. **Decide.**
+   - To hide the post, use *Hide*, choose the law as the ground and name the
+     provision, and set *What it followed* to "A notice sent by email".
+   - Otherwise take no action.
+4. **Tell the sender** your decision:
+
+   > We have looked at your notice. Our decision: [the post was hidden /
+   > no action], because [reason]. If you disagree, reply to this email and
+   > a person will look at it again. You can also take the matter to a
+   > court.
+
+5. **If the content suggests a threat to someone's life or safety**, report it
+   to the police at once (DSA Art. 18).
+
+Keep the email thread until the forum is deleted. It is the record of the
+notice.
 
 ## 9. Requests from members
 
