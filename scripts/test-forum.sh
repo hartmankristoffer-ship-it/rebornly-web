@@ -56,6 +56,10 @@ for f in supabase/tests/*.test.sql; do
   echo "$out" | grep -Eq '^1\.\.[0-9]+' || status=1
 done
 
+# Every read-only function in a real read-only transaction, as the Data API
+# runs it.
+bash supabase/tests/read_only_calls.sh "$NAME" || status=1
+
 # Two sessions at once: an erasure against a member who is writing.
 bash supabase/tests/erase_race.sh "$NAME" || status=1
 

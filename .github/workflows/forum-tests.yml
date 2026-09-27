@@ -8,6 +8,8 @@ on:
     paths:
       - 'supabase/**'
       - 'scripts/test-forum.sh'
+      # test-forum.sh also checks the rules version in forum.js.
+      - 'forum/forum.js'
       - '.github/workflows/forum-tests.yml'
   workflow_dispatch:
 

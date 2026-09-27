@@ -430,7 +430,7 @@
       h('span', { class: 'title' }, t.title || (t.hidden ? 'Hidden by a moderator' : 'Deleted by its author'),
         t.pinned ? h('span', { class: 'tag' }, 'Pinned') : null,
         t.locked ? h('span', { class: 'tag' }, 'Locked') : null,
-        t.hidden ? h('span', { class: 'tag' }, 'Hidden') : null),
+        t.hidden && t.title ? h('span', { class: 'tag' }, 'Hidden') : null),
       h('span', { class: 'meta' },
         'by ', t.author.name || 'a former member',
         ' · ', plural(t.replies, 'reply', 'replies'),
@@ -591,9 +591,11 @@
     if (!data || !current(n)) return;
     // A thread is shown whole: later pages are fetched straight away, up to a
     // generous limit; past it, "Show more posts" continues from the cursor.
+    // Right after posting (scrollToEnd) there is no limit, so the new reply
+    // is always on the page.
     let loaded = data.posts.slice();
     let full = data.posts.length < PAGE;
-    for (let page = 1; !full && page < MAX_PAGES_AT_ONCE; page += 1) {
+    for (let page = 1; !full && (scrollToEnd || page < MAX_PAGES_AT_ONCE); page += 1) {
       const next = await load(n, 'forum_thread', { p_thread_id: id, p_limit: PAGE, p_after: lastId(loaded) });
       if (!next || !current(n)) return;
       loaded = loaded.concat(next.posts);
@@ -632,26 +634,28 @@
       } } },
         h('label', { for: 'reply' }, 'Reply'), body,
         h('div', { class: 'buttons' }, send), rstatus);
-    } else {
-      reply = h('p', { class: 'muted' }, !writable() ? 'The forum is read-only.'
-        : t.hidden ? 'This thread is hidden.' : 'This thread is locked. No new replies can be posted.');
+    } else if (!writable()) {
+      reply = h('p', { class: 'muted' }, 'The forum is read-only.');
+    } else if (!t.hidden) {
+      reply = h('p', { class: 'muted' }, 'This thread is locked. No new replies can be posted.');
     }
 
+    // Each fact once: a hidden thread is explained by one panel (with the
+    // reason for its author and the moderators), or, for someone who only
+    // replied in it, by its heading and one line.
     show(h('p', { class: 'crumbs' }, h('a', { href: '#/' }, 'Forum'), ' › ', h('a', { href: '#/c/' + t.category.slug }, t.category.title)),
       h('h1', {}, t.title || (t.hidden ? 'Hidden by a moderator' : 'Deleted by its author')),
       readOnlyNote(),
-      h('p', { class: 'muted' },
+      t.pinned || t.locked ? h('p', { class: 'muted' },
         t.pinned ? h('span', { class: 'tag' }, 'Pinned') : null,
-        t.locked ? h('span', { class: 'tag' }, 'Locked') : null,
-        t.hidden ? h('span', { class: 'tag' }, 'Hidden') : null),
+        t.locked ? h('span', { class: 'tag' }, 'Locked') : null) : null,
       t.hidden && t.hidden_reason ? h('p', { class: 'panel' }, 'A moderator hid this thread: ', t.hidden_reason,
         '. Only its author and the moderators can see it.') : null,
-      t.hidden && !t.hidden_reason && !me.moderator ? h('p', { class: 'panel' }, 'A moderator hid this thread. ' +
-        'You still see your own replies here and can delete them.') : null,
+      t.hidden && !t.title ? h('p', { class: 'panel' }, 'You still see your own replies here and can delete them.') : null,
       tools, posts,
       h('div', { class: 'buttons' }, more), status,
       reply);
-    if (scrollToEnd) reply.scrollIntoView({ block: 'center' });
+    if (scrollToEnd && reply) reply.scrollIntoView({ block: 'center' });
   }
 
   // ---------------------------------------------------------------------------

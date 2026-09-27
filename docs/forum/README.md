@@ -37,10 +37,17 @@ app.
   who took no part in them. The author sees the thread with the reason. A
   member who replied keeps the thread in view, without its title, and sees only
   their own replies there, so their words do not vanish without a word.
-- **Erasure** (`forum.erase_member`) locks the member first. Every call a
-  member makes holds a shared lock on their row, so a post written while the
-  erasure runs is either wiped by it or refused. `supabase/tests/erase_race.sh`
-  proves this with two real sessions.
+- **Erasure** (`forum.erase_member`) locks the member first. Every call that
+  writes holds a shared lock on the caller's member row, so a post written while
+  the erasure runs is either wiped by it or refused. A moderator acting on a
+  post locks the post's author first, in the same order, and the erasure clears
+  the moderation log once more at its end. `supabase/tests/erase_race.sh`
+  proves this with two real sessions, and fails if they did not overlap.
+- **Reads never lock.** The Data API runs a `STABLE` function in a read-only
+  transaction, so the read functions check membership without a lock.
+  `supabase/tests/read_only_calls.sh` runs every one of them in a real
+  read-only transaction, and a pgTAP pin stops a read from taking a lock or a
+  write from skipping one.
 - **The page** renders everything a member wrote as text (`textContent`), loads
   no outside script, and makes no request while `config.js` is empty.
 
@@ -63,8 +70,9 @@ bash scripts/test-forum.sh
 ```
 
 This starts a throwaway `supabase/postgres` container, applies the migration and
-runs the pgTAP suite. It then runs `erase_race.sh`, an erasure against a member
-who is writing at the same moment. It also checks that the rules version in
+runs the pgTAP suite. It then runs `read_only_calls.sh` (every read in a
+read-only transaction) and `erase_race.sh` (an erasure against a member who is
+writing at the same moment). It also checks that the rules version in
 `forum.js` matches the one the database accepts. Nothing shared is touched.
 
 To try the whole forum locally, run `npx supabase start` in this folder. It

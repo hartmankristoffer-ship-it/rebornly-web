@@ -211,25 +211,11 @@ begin
 end;
 $$;
 
--- The signed-in member, active; with p_moderator, also a moderator.
---
--- The member row is read FOR KEY SHARE, held to the end of the call. That
--- lock conflicts only with erase_member's FOR UPDATE, so while a member is
--- being erased every call they make waits, then finds no member and fails:
--- nothing they write can slip past the erasure. (Volatile, because a
--- non-volatile function may not lock rows.)
-create function forum.require_member(p_moderator boolean default false)
-returns forum.members
-language plpgsql volatile set search_path = '' as $$
-declare
-  v_uid uuid := auth.uid();
-  m forum.members;
+-- The checks every call makes on the member row it found.
+create function forum.check_member(m forum.members, p_moderator boolean) returns forum.members
+language plpgsql stable set search_path = '' as $$
 begin
-  if v_uid is null then
-    perform forum.fail('not_signed_in');
-  end if;
-  select * into m from forum.members where user_id = v_uid for key share;
-  if not found then
+  if m.user_id is null then
     perform forum.fail('not_member');
   end if;
   if m.status <> 'active' then
@@ -239,6 +225,43 @@ begin
     perform forum.fail('not_moderator');
   end if;
   return m;
+end;
+$$;
+
+-- For calls that WRITE: the signed-in member, active; with p_moderator, also
+-- a moderator. The member row is read FOR KEY SHARE, held to the end of the
+-- call. That lock conflicts only with erase_member's FOR UPDATE, so while a
+-- member is being erased every write they make waits, then finds no member
+-- and fails: nothing they write can slip past the erasure. (Volatile, because
+-- a non-volatile function may not lock rows.)
+create function forum.require_member(p_moderator boolean default false)
+returns forum.members
+language plpgsql volatile set search_path = '' as $$
+declare
+  m forum.members;
+begin
+  if auth.uid() is null then
+    perform forum.fail('not_signed_in');
+  end if;
+  select * into m from forum.members where user_id = auth.uid() for key share;
+  return forum.check_member(m, p_moderator);
+end;
+$$;
+
+-- For calls that only READ. The Data API (PostgREST) runs a STABLE function
+-- in a read-only transaction, where no row may be locked, so reads check the
+-- member without a lock. A read during an erasure writes nothing to protect.
+create function forum.require_reader(p_moderator boolean default false)
+returns forum.members
+language plpgsql stable set search_path = '' as $$
+declare
+  m forum.members;
+begin
+  if auth.uid() is null then
+    perform forum.fail('not_signed_in');
+  end if;
+  select * into m from forum.members where user_id = auth.uid();
+  return forum.check_member(m, p_moderator);
 end;
 $$;
 
@@ -260,7 +283,9 @@ $$;
 -- it; then only its author (who sees the reason) and the moderators.
 create function forum.thread_in_full(t forum.threads, m forum.members) returns boolean
 language sql stable set search_path = '' as $$
-  select t.hidden_at is null or t.author_id = m.user_id or m.role = 'moderator'
+  -- coalesce: a thread whose author was erased has no author (null), and a
+  -- null here must mean "no", never let the thread through.
+  select coalesce(t.hidden_at is null or t.author_id = m.user_id or m.role = 'moderator', false)
 $$;
 
 -- Whether the thread is in the member's view at all. Besides the above, a
@@ -286,8 +311,8 @@ $$;
 -- placeholder. In a hidden thread a replier sees only their own posts.
 create function forum.post_visible(p forum.posts, t forum.threads, m forum.members) returns boolean
 language sql stable set search_path = '' as $$
-  select p.author_id = m.user_id or m.role = 'moderator'
-      or (p.hidden_at is null and forum.thread_in_full(t, m))
+  select coalesce(p.author_id = m.user_id or m.role = 'moderator'
+                  or (p.hidden_at is null and forum.thread_in_full(t, m)), false)
 $$;
 
 -- When the last post the given member may see was written.
@@ -314,7 +339,7 @@ language sql stable set search_path = '' as $$
   select jsonb_build_object(
     'id', p.id,
     'author', forum.author_json(p.author_id),
-    'mine', p.author_id = m.user_id,
+    'mine', coalesce(p.author_id = m.user_id, false),
     'opening', p.is_opening,
     'body', case
               when p.deleted_at is not null then null
@@ -484,7 +509,7 @@ begin
                                       when l.target = any(v_targets) then
                                         jsonb_build_object('action', l.action, 'target', l.target,
                                           'reason', l.reason, 'created_at', l.created_at,
-                                          'by_this_person', l.moderator_id is not distinct from v_uid)
+                                          'by_this_person', coalesce(l.moderator_id = v_uid, false))
                                       else
                                         jsonb_build_object('action', l.action, 'created_at', l.created_at,
                                           'by_this_person', true)
@@ -492,6 +517,18 @@ begin
                             from forum.moderation_log l
                             where l.target = any(v_targets) or l.moderator_id = v_uid), '[]'::jsonb));
 end;
+$$;
+
+-- Takes a person's address and id out of the moderation log, wipes the
+-- moderators' words about them and their content, and clears their id as
+-- the moderator who acted.
+create function forum.clear_log_about(p_email text, p_uid uuid, p_targets text[]) returns void
+language sql set search_path = '' as $$
+  update forum.moderation_log set target = 'erased', reason = null
+   where target in (p_email, p_uid::text);
+  update forum.moderation_log set reason = null
+   where target = any(p_targets) and reason is not null;
+  update forum.moderation_log set moderator_id = null where moderator_id = p_uid;
 $$;
 
 -- For erasure requests (GDPR Art. 17), run by the owner in the SQL editor.
@@ -519,11 +556,7 @@ begin
   select count(*) into v_log from forum.moderation_log
    where target = any(v_targets) or moderator_id = v_uid;
 
-  update forum.moderation_log set target = 'erased', reason = null
-   where target in (v_email, v_uid::text);
-  update forum.moderation_log set reason = null
-   where target = any(v_targets) and reason is not null;
-  update forum.moderation_log set moderator_id = null where moderator_id = v_uid;
+  perform forum.clear_log_about(v_email, v_uid, v_targets);
 
   delete from forum.invitations where email = v_email;
   update forum.invitations set invited_by = null where invited_by = v_uid;
@@ -559,6 +592,9 @@ begin
   update forum.reports set resolved_by = null where resolved_by = v_uid;
 
   delete from auth.users where id = v_uid;
+  -- Once more at the end: a moderator action on their content that committed
+  -- while this ran (resolving a report, say) cannot leave its words behind.
+  perform forum.clear_log_about(v_email, v_uid, v_targets);
   return jsonb_build_object('email', v_email, 'account', true,
                             'posts_wiped', v_posts, 'log_rows_cleared', v_log);
 end;
@@ -640,7 +676,7 @@ $$;
 create function public.forum_categories() returns jsonb
 language plpgsql stable security definer set search_path = '' as $$
 declare
-  m forum.members := forum.require_member();
+  m forum.members := forum.require_reader();
 begin
   return coalesce((
     select jsonb_agg(jsonb_build_object(
@@ -659,7 +695,7 @@ create function public.forum_threads(p_category text, p_limit integer default 30
 returns jsonb
 language plpgsql stable security definer set search_path = '' as $$
 declare
-  m forum.members := forum.require_member();
+  m forum.members := forum.require_reader();
   c forum.categories;
   v_limit integer := least(greatest(coalesce(p_limit, 30), 1), 100);
   v_offset integer := greatest(coalesce(p_offset, 0), 0);
@@ -708,7 +744,7 @@ create function public.forum_thread(p_thread_id uuid, p_limit integer default 50
 returns jsonb
 language plpgsql stable security definer set search_path = '' as $$
 declare
-  m forum.members := forum.require_member();
+  m forum.members := forum.require_reader();
   t forum.threads;
   c forum.categories;
   v_limit integer := least(greatest(coalesce(p_limit, 50), 1), 100);
@@ -887,6 +923,31 @@ $$;
 -- Moderator functions
 -- ---------------------------------------------------------------------------
 
+-- A post a moderator is about to act on, locked in the same order as
+-- erase_member locks: first its author's member row, then the post. So a
+-- moderator's action never interleaves with the erasure of the post's
+-- author; if the author was erased meanwhile, the post is gone.
+create function forum.lock_post_for_moderation(p_post_id uuid) returns forum.posts
+language plpgsql volatile set search_path = '' as $$
+declare
+  p forum.posts;
+  v_author uuid;
+begin
+  select author_id into v_author from forum.posts where id = p_post_id;
+  if not found then
+    perform forum.fail('not_found');
+  end if;
+  if v_author is not null then
+    perform 1 from forum.members where user_id = v_author for key share;
+  end if;
+  select * into p from forum.posts where id = p_post_id for update;
+  if not found or p.author_id is distinct from v_author then
+    perform forum.fail('not_found');
+  end if;
+  return p;
+end;
+$$;
+
 -- Hiding keeps the text for its author and the moderators and shows the
 -- author the reason (DSA Art. 17); every other member no longer sees the post
 -- at all. Hiding the opening post hides the thread.
@@ -897,8 +958,8 @@ declare
   p forum.posts;
   v_reason text := forum.clean_reason(p_reason);
 begin
-  select * into p from forum.posts where id = p_post_id for update;
-  if not found then
+  p := forum.lock_post_for_moderation(p_post_id);
+  if p.deleted_at is not null then
     perform forum.fail('not_found');
   end if;
   update forum.posts
@@ -919,10 +980,7 @@ declare
   m forum.members := forum.require_member(true);
   p forum.posts;
 begin
-  select * into p from forum.posts where id = p_post_id for update;
-  if not found then
-    perform forum.fail('not_found');
-  end if;
+  p := forum.lock_post_for_moderation(p_post_id);
   update forum.posts set hidden_at = null, hidden_reason = null, hidden_by = null where id = p.id;
   if p.is_opening then
     update forum.threads set hidden_at = null, hidden_reason = null, hidden_by = null
@@ -953,7 +1011,7 @@ $$;
 create function public.forum_mod_reports(p_include_resolved boolean default false) returns jsonb
 language plpgsql stable security definer set search_path = '' as $$
 declare
-  m forum.members := forum.require_member(true);
+  m forum.members := forum.require_reader(true);
 begin
   return coalesce((
     select jsonb_agg(jsonb_build_object(
@@ -1028,7 +1086,7 @@ $$;
 create function public.forum_mod_invitations() returns jsonb
 language plpgsql stable security definer set search_path = '' as $$
 declare
-  m forum.members := forum.require_member(true);
+  m forum.members := forum.require_reader(true);
 begin
   return coalesce((
     select jsonb_agg(jsonb_build_object(
@@ -1046,7 +1104,7 @@ $$;
 create function public.forum_mod_members() returns jsonb
 language plpgsql stable security definer set search_path = '' as $$
 declare
-  m forum.members := forum.require_member(true);
+  m forum.members := forum.require_reader(true);
 begin
   return coalesce((
     select jsonb_agg(jsonb_build_object(
