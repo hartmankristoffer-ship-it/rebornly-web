@@ -61,6 +61,7 @@
     read_only: 'The forum is read-only now. You can still read it and delete your own posts.',
     invalid_kind: 'Please choose what the report is about.',
     invalid_notice: 'Please explain why it is illegal, in 10 to 2,000 characters.',
+    notifier_name_required: 'Please give your name (2 to 100 characters), or tick that the notice concerns child sexual abuse material.',
     good_faith_required: 'Please confirm that you make this notice in good faith.',
     invalid_basis: 'Please name the forum rule or the law the decision rests on.',
     invalid_source: 'Please say what the decision followed.',
@@ -603,9 +604,18 @@
     const faith = h('input', { type: 'checkbox' });
     const faithLine = h('label', { class: 'check', hidden: true }, faith,
       h('span', {}, 'I believe in good faith that this notice is accurate and complete.'));
+    // DSA Art. 16(2)(c): the notifier's name (their email is the account's).
+    const name = h('input', { type: 'text', maxlength: '100', autocomplete: 'name', 'aria-label': 'Your name' });
+    const csam = h('input', { type: 'checkbox' });
+    const nameLines = h('div', { hidden: true },
+      h('label', {}, 'Your name'), name,
+      h('p', { class: 'hint' }, 'Your email address is the one you signed in with. Our decision will be under My reports.'),
+      h('label', { class: 'check' }, csam,
+        h('span', {}, 'It concerns child sexual abuse material (your name is then not needed).')));
     const label = h('label', {}, 'Which rule does it break, and how?');
     const sync = () => {
       faithLine.hidden = !illegal.checked;
+      nameLines.hidden = !illegal.checked;
       reason.maxLength = illegal.checked ? 2000 : 500;
       label.textContent = illegal.checked ? 'Why is it illegal? Explain as precisely as you can.'
                                           : 'Which rule does it break, and how?';
@@ -616,9 +626,13 @@
     slot.replaceChildren(h('form', { class: 'form', novalidate: true, on: { submit: async (event) => {
       event.preventDefault();
       if (illegal.checked && !faith.checked) return say(status, message('good_faith_required'), true);
+      if (illegal.checked && !csam.checked && name.value.trim().length < 2) {
+        return say(status, message('notifier_name_required'), true);
+      }
       if (await busy(go, status, () => rpc('forum_report_post', {
         p_post_id: postId, p_reason: reason.value,
         p_kind: illegal.checked ? 'illegal' : 'rules', p_good_faith: illegal.checked && faith.checked,
+        p_notifier_name: illegal.checked ? name.value : null, p_csam: illegal.checked && csam.checked,
       }))) {
         slot.replaceChildren(h('p', { class: 'muted' }, 'Received. You will find the decision under ',
           h('a', { href: '#/reports' }, 'My reports'), '.'));
@@ -626,7 +640,7 @@
     } } },
       h('label', { class: 'check' }, rules, h('span', {}, 'It breaks the forum rules')),
       h('label', { class: 'check' }, illegal, h('span', {}, 'It is illegal')),
-      label, reason, faithLine,
+      label, reason, nameLines, faithLine,
       h('div', { class: 'buttons' }, go,
         h('button', { type: 'button', class: 'link', on: { click: () => slot.replaceChildren() } }, 'Cancel')),
       status));
@@ -824,8 +838,10 @@
         h('p', { class: 'muted' }, 'Post by ', r.post_author.name || 'a former member',
           r.post_hidden ? ' · already hidden' : ''),
         h('p', {}, h('span', { class: 'tag' }, r.kind === 'illegal' ? 'Illegal content' : 'Forum rules'),
+          r.csam ? h('span', { class: 'tag' }, 'Child sexual abuse material: report to the police') : null,
           r.kind === 'illegal' && r.good_faith ? ' In good faith.' : null),
-        h('p', {}, 'Reported by ', r.reporter.name || 'a former member', ' on ', when(r.created_at), ': ', r.reason),
+        h('p', {}, 'Reported by ', r.reporter.name || 'a former member',
+          r.notifier_name ? ' (' + r.notifier_name + ')' : '', ' on ', when(r.created_at), ': ', r.reason),
         h('div', { class: 'actions' },
           !r.post_hidden && !r.post_deleted ? h('button', { type: 'button', class: 'link danger', on: { click: () =>
             decisionForm(slot, 'hiding this post', 'Hide and decide', r.id, async (d) => {

@@ -144,7 +144,9 @@ browser (Edge, Firefox) as B.
   sign in; write to the person yourself and send them to
   `https://rebornlyapp.com/forum/`.
 - **Reports** show under Moderation, marked *Forum rules* or *Illegal
-  content*. Look at them at least once a day during the beta. Either:
+  content*; an illegal-content notice shows the notifier's name. One marked
+  *Child sexual abuse material* goes to the police at once, before anything
+  else. Look at reports at least once a day during the beta. Either:
   - *Hide the post*: choose the ground (a forum rule, or the law with its
     provision) and write what happened. The author sees all of it, and so does
     the reporter's decision.

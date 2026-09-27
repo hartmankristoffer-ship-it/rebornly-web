@@ -28,7 +28,11 @@ alter table forum.reports
   add column good_faith boolean not null default false,
   add column resolution_action text check (resolution_action in ('hidden', 'no_action', 'removed')),
   add column decision_seen_at timestamptz,
+  add column notifier_name text,
+  add column csam boolean not null default false,
   add constraint reports_illegal_needs_good_faith check (kind <> 'illegal' or good_faith),
+  add constraint reports_name_only_on_notices check (kind = 'illegal' or (notifier_name is null and not csam)),
+  add constraint reports_notice_names_notifier check (kind <> 'illegal' or csam or notifier_name is not null),
   add constraint reports_action_with_resolution check ((resolved_at is null) = (resolution_action is null));
 
 create table forum.decisions (
@@ -242,8 +246,13 @@ $$;
 
 drop function public.forum_report_post(uuid, text);
 
+-- An illegal-content notice carries the notifier's name as well as the
+-- email their account already verified (Art. 16(2)(c)), unless it concerns
+-- child sexual abuse material, where the name is not needed; the moderators
+-- then see that it does, so they can report it to the police at once.
 create function public.forum_report_post(p_post_id uuid, p_reason text,
-                                         p_kind text default 'rules', p_good_faith boolean default false)
+                                         p_kind text default 'rules', p_good_faith boolean default false,
+                                         p_notifier_name text default null, p_csam boolean default false)
 returns void
 language plpgsql security definer set search_path = '' as $$
 declare
@@ -251,6 +260,8 @@ declare
   p forum.posts;
   t forum.threads;
   v_reason text;
+  v_name text := nullif(regexp_replace(btrim(coalesce(p_notifier_name, '')), '[[:space:]]+', ' ', 'g'), '');
+  v_csam boolean := coalesce(p_csam, false);
 begin
   if p_kind is null or p_kind not in ('rules', 'illegal') then
     perform forum.fail('invalid_kind');
@@ -260,8 +271,16 @@ begin
     if p_good_faith is distinct from true then
       perform forum.fail('good_faith_required');
     end if;
+    if v_name is null and not v_csam then
+      perform forum.fail('notifier_name_required');
+    end if;
+    if v_name is not null and (length(v_name) < 2 or length(v_name) > 100 or not forum.text_ok(v_name)) then
+      perform forum.fail('notifier_name_required');
+    end if;
   else
     v_reason := forum.clean_reason(p_reason);
+    v_name := null;
+    v_csam := false;
   end if;
   -- FOR SHARE waits for a moderator hiding this post at the same moment
   -- (lock_post_for_moderation holds it FOR UPDATE), then sees it hidden.
@@ -278,8 +297,8 @@ begin
   end if;
   perform forum.throttle(m, 'report');
   begin
-    insert into forum.reports (post_id, reporter_id, reason, kind, good_faith)
-    values (p.id, m.user_id, v_reason, p_kind, coalesce(p_good_faith, false));
+    insert into forum.reports (post_id, reporter_id, reason, kind, good_faith, notifier_name, csam)
+    values (p.id, m.user_id, v_reason, p_kind, coalesce(p_good_faith, false), v_name, v_csam);
   exception when unique_violation then
     perform forum.fail('already_reported');
   end;
@@ -480,6 +499,8 @@ begin
              'reporter', forum.author_json(r.reporter_id),
              'kind', r.kind,
              'good_faith', r.good_faith,
+             'notifier_name', r.notifier_name,
+             'csam', r.csam,
              'reason', r.reason,
              'created_at', r.created_at,
              'resolved_at', r.resolved_at,
@@ -617,7 +638,8 @@ begin
                                'deleted_at', p.deleted_at, 'hidden_reason', p.hidden_reason) order by p.seq)
                        from forum.posts p where p.author_id = v_uid), '[]'::jsonb),
     'reports_made', coalesce((select jsonb_agg(jsonb_build_object('post_id', r.post_id, 'kind', r.kind,
-                                      'good_faith', r.good_faith, 'reason', r.reason,
+                                      'good_faith', r.good_faith, 'notifier_name', r.notifier_name,
+                                      'csam', r.csam, 'reason', r.reason,
                                       'created_at', r.created_at, 'decided_at', r.resolved_at,
                                       'action', r.resolution_action, 'decision', r.resolution)
                                       order by r.created_at)

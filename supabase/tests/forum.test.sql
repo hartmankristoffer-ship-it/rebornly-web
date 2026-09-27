@@ -131,7 +131,7 @@ insert into forum.invitations (email) values
   ('alice@example.com'), ('bob@example.com'), ('owner@example.com'),
   ('dan@example.com'), ('helper@example.com');
 
-select plan(233);
+select plan(240);
 
 -- ---------------------------------------------------------------------------
 -- 1. Privileges: nothing is reachable except the checked functions
@@ -473,9 +473,26 @@ select is(tests.as_user(:'dan', format('select public.forum_report_post(%L, %L, 
 select is(tests.as_user(:'dan', format('select public.forum_report_post(%L, %L, %L, true)::text', :'p1', 'Unlawful', 'illegal')),
           'error:forum:invalid_notice', 'an illegal-content notice needs a real explanation');
 select is(tests.as_user(:'dan', format('select public.forum_report_post(%L, %L, %L, true)::text', :'p1', 'This post defames a named person', 'illegal')),
-          'ok:', 'a member sends an illegal-content notice');
-select ok(tests.val(tests.as_user(:'mod', 'select public.forum_mod_reports()::text')) @> '[{"kind": "illegal", "good_faith": true}]',
-          'the moderators see what kind of notice it is and the statement of good faith');
+          'error:forum:notifier_name_required', 'an illegal-content notice needs the notifier''s name');
+select is(tests.as_user(:'dan', format('select public.forum_report_post(%L, %L, %L, true, %L)::text', :'p1', 'This post defames a named person', 'illegal', ' ')),
+          'error:forum:notifier_name_required', 'a blank name is no name');
+select is(tests.as_user(:'dan', format('select public.forum_report_post(%L, %L, %L, true, %L)::text', :'p1', 'This post defames a named person', 'illegal', '  Dan   Svensson ')),
+          'ok:', 'a member sends an illegal-content notice with their name');
+select ok(tests.val(tests.as_user(:'mod', 'select public.forum_mod_reports()::text'))
+          @> '[{"kind": "illegal", "good_faith": true, "notifier_name": "Dan Svensson", "csam": false}]',
+          'the moderators see the kind of notice, the notifier''s name and the statement of good faith');
+select is(tests.as_user(:'bob', format('select public.forum_report_post(%L, %L, %L, true, null, true)::text', :'p1', 'This post links to images of abuse of a child', 'illegal')),
+          'ok:', 'a notice about child sexual abuse material needs no name');
+select ok(tests.val(tests.as_user(:'mod', 'select public.forum_mod_reports()::text'))
+          @> '[{"kind": "illegal", "csam": true, "notifier_name": null}]',
+          'the moderators see that a notice concerns child sexual abuse material');
+select id as r_csam from forum.reports where reporter_id = :'bob' and csam \gset
+select is(tests.as_user(:'mod', format('select public.forum_mod_resolve_report(%L, %L)::text', :'r_csam', 'Checked with the police; nothing found in the post')),
+          'ok:', 'setup: the moderators decide it');
+select is(tests.as_user(:'alice', format('select public.forum_report_post(%L, %L, %L, false, %L, true)::text', :'p2', 'Off topic', 'rules', 'Alice Real')),
+          'error:forum:not_found', 'setup: (p2 is hidden from Alice)');
+select ok((select bool_and(notifier_name is null and not csam) from forum.reports where kind = 'rules'),
+          'a rules report never carries a name or the abuse-material mark');
 select id as r_dan from forum.reports where reporter_id = :'dan' \gset
 select ok(tests.val(tests.as_user(:'dan', 'select public.forum_my_reports()::text'))
           @> jsonb_build_array(jsonb_build_object('id', :'r_dan', 'kind', 'illegal', 'decided', false)),
@@ -588,9 +605,9 @@ select is(tests.as_user(:'alice', 'select public.forum_mod_invitations()::text')
 select ok(tests.val(tests.as_user(:'mod', 'select public.forum_mod_invitations()::text'))
           @> '[{"email": "alice@example.com", "member": "Alice", "revoked": false}, {"email": "carol@example.com", "revoked": true}]',
           'the moderator sees each invitation, who joined and what was withdrawn');
--- Thirteen: hiding a reported post also logs the notice it decided, and
--- 6b hides, decides and restores one more post.
-select is((select count(*) from forum.moderation_log), 13::bigint,
+-- Fourteen: hiding a reported post also logs the notice it decided; 6b
+-- hides, decides and restores one more post, and decides the abuse notice.
+select is((select count(*) from forum.moderation_log), 14::bigint,
           'every moderator action is logged');
 
 -- ---------------------------------------------------------------------------
