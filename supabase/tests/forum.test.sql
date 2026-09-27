@@ -121,7 +121,7 @@ insert into forum.invitations (email) values
   ('alice@example.com'), ('bob@example.com'), ('owner@example.com'),
   ('dan@example.com'), ('helper@example.com');
 
-select plan(180);
+select plan(184);
 
 -- ---------------------------------------------------------------------------
 -- 1. Privileges: nothing is reachable except the checked functions
@@ -558,8 +558,12 @@ select substr(tests.as_user(:'bob', $$select public.forum_create_thread('feedbac
 select ok(:'t_bob' ~ '^[0-9a-f-]{36}$', 'setup: Bob starts a thread of his own');
 select substr(tests.as_user(:'bob', $$select public.forum_create_thread('feedback', 'Bob''s second idea', 'Something rude')::text$$), 4) as t_bob2 \gset
 select id as p_bob2 from forum.posts where thread_id = :'t_bob2' and is_opening \gset
+select ok(tests.as_user(:'alice', format('select public.forum_reply(%L, %L)::text', :'t_bob2', 'Alice replies to Bob')) like 'ok:%',
+          'setup: Alice replies in Bob''s second thread');
 select is(tests.as_user(:'mod', format('select public.forum_mod_hide_post(%L, %L)::text', :'p_bob2', 'Rude opening')),
           'ok:', 'setup: the moderator hides Bob''s second thread');
+select is(tests.val(tests.as_user(:'alice', format('select public.forum_thread(%L)::text', :'t_bob2'))) #>> '{thread,hidden}',
+          'true', 'while Bob is a member, Alice (who replied) still finds his hidden thread');
 select is(tests.as_user(:'mod', format('select public.forum_mod_suspend(%L, %L)::text', :'bob', 'Bob was rude twice')),
           'ok:', 'setup: the moderator suspends Bob');
 insert into auth.audit_log_entries (id, payload, created_at) values
@@ -619,9 +623,13 @@ select ok((select title = '' and deleted_at is not null from forum.threads where
                where e ->> 'id' = :'t_bob') @> '{"title": null, "deleted": true}',
           'the title of the thread he started is wiped');
 select is(tests.as_user(:'alice', format('select public.forum_thread(%L)::text', :'t_bob2')),
-          'error:forum:not_found', 'a hidden thread whose author was erased stays gone for everyone else');
+          'error:forum:not_found', 'once its author is erased, a hidden thread is gone even for a member who replied in it');
+select is(tests.as_user(:'dan', format('select public.forum_thread(%L)::text', :'t_bob2')),
+          'error:forum:not_found', 'and for a member who took no part in it');
 select ok(tests.as_user(:'alice', $$select public.forum_threads('feedback')::text$$) !~ :'t_bob2',
           'and stays out of their lists');
+select is(tests.val(tests.as_user(:'mod', format('select public.forum_thread(%L)::text', :'t_bob2'))) #>> '{thread,hidden}',
+          'true', 'a moderator still finds it');
 select is(tests.as_user(:'alice', format('select public.forum_report_post(%L, %L)::text', :'p_bob2', 'Reporting a ghost')),
           'error:forum:not_found', 'and its opening post cannot be reported');
 select ok(tests.as_user(:'alice', format('select public.forum_thread(%L)::text', :'t2')) !~ :'p4',

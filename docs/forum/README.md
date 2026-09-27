@@ -36,7 +36,9 @@ app.
 - **Hidden threads** (a moderator hid the opening post) are gone for everyone
   who took no part in them. The author sees the thread with the reason. A
   member who replied keeps the thread in view, without its title, and sees only
-  their own replies there, so their words do not vanish without a word.
+  their own replies there, so their words do not vanish without a word. Once
+  the thread's author has been erased, a hidden thread is gone for everyone but
+  the moderators, repliers included.
 - **Erasure** (`forum.erase_member`) locks the member first. Every call that
   writes holds a shared lock on the caller's member row, so a post written while
   the erasure runs is either wiped by it or refused. A moderator acting on a

@@ -292,11 +292,14 @@ $$;
 -- member who replied in a thread a moderator then hid keeps it in view, so
 -- their own replies do not vanish without a word; they see only their own
 -- replies there, not its title (forum.thread_title) or anyone else's posts
--- (forum.post_visible).
+-- (forum.post_visible). Once the thread's author has been erased, a hidden
+-- thread is gone for everyone but the moderators, repliers included: erasure
+-- and moderation together leave nothing to open.
 create function forum.thread_visible(t forum.threads, m forum.members) returns boolean
 language sql stable set search_path = '' as $$
   select forum.thread_in_full(t, m)
-      or exists (select 1 from forum.posts p where p.thread_id = t.id and p.author_id = m.user_id)
+      or (t.author_id is not null
+          and exists (select 1 from forum.posts p where p.thread_id = t.id and p.author_id = m.user_id))
 $$;
 
 -- The title as the member may see it: none once deleted, none for a replier
