@@ -221,11 +221,16 @@
   });
 
   // ---------------------------------------------------------------------------
-  // Routing: #/  #/c/<slug>  #/c/<slug>/new  #/t/<id>  #/mod  #/rules
+  // Routing: #/  #/code  #/c/<slug>  #/c/<slug>/new  #/t/<id>  #/mod  #/rules
   // ---------------------------------------------------------------------------
 
   let me = null;
   let seq = 0;
+  // The address a code was just asked for. Kept in memory only, never stored
+  // (Cookie Policy 2a: nothing is stored until you sign in), so after the
+  // browser reloads the tab the member types it again with the code.
+  let pending = null;
+  const visit = (hash) => { if (location.hash === hash) route(); else location.hash = hash; };
   const current = (n) => n === seq;
   const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
   const SLUG = /^[a-z0-9-]{1,40}$/;
@@ -236,6 +241,13 @@
     if (parts[0] === 'rules') return showRules();
     if (parts[0] === 'notice') return showNotice();
     if (!BASE || !KEY) { bar.hidden = true; return showOff(); }
+    // The code step has an address of its own, so it survives the browser
+    // reloading or discarding the tab while the member reads the email.
+    if (parts[0] === 'code' && parts.length === 1) {
+      if (!session) { bar.hidden = true; return showCode(pending); }
+      history.replaceState(null, '', '#/');
+      return route();
+    }
     if (!session) { bar.hidden = true; return showSignIn(); }
     try { me = await rpc('forum_me'); }
     catch (error) {
@@ -328,14 +340,18 @@
         const result = await auth('otp', { email: address, create_user: true });
         // An address without an invitation is refused by the server; the page
         // answers the same either way, so it does not reveal who is invited.
-        if (result.ok || result.status === 403) return showCode(address);
+        if (result.ok || result.status === 403) { pending = address; return visit('#/code'); }
         if (result.status === 429) throw new ForumError('code_wait');
         throw new ForumError('unavailable');
       });
     } } },
       h('label', { for: 'email' }, 'Email address'),
       email,
-      h('div', { class: 'buttons' }, send),
+      h('div', { class: 'buttons' }, send,
+        h('a', { href: '#/code', on: { click: () => {
+          const address = email.value.trim().toLowerCase();
+          pending = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(address) ? address : null;
+        } } }, 'I already have a code')),
       status);
     show(h('h1', {}, 'Beta forum'),
       h('p', {}, 'This forum is for people invited to the Rebornly beta. Sign in with the email address your ' +
@@ -345,34 +361,46 @@
         h('a', { href: '/cookies/' }, 'Cookie policy'), ' · ', h('a', { href: '/privacy/' }, 'Privacy policy')));
   }
 
+  // The code step (#/code). The address is known when the code was asked for
+  // on this page; after a reload it is not, and the member types it here.
   function showCode(address) {
     const status = statusLine();
+    const email = address ? null : h('input', { id: 'code-email', type: 'email', autocomplete: 'email',
+      maxlength: '254', required: true });
     const code = h('input', { id: 'code', class: 'code', type: 'text', inputmode: 'numeric',
       autocomplete: 'one-time-code', maxlength: '10', required: true });
     const go = h('button', { class: 'button', type: 'submit' }, 'Sign in');
     const form = h('form', { class: 'form', novalidate: true, on: { submit: async (event) => {
       event.preventDefault();
+      const target = address || email.value.trim().toLowerCase();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(target)) return say(status, message('invalid_email'), true);
       const token = code.value.replace(/\s+/g, '');
       if (!/^[0-9]{6,10}$/.test(token)) return say(status, 'Please type the code from the email.', true);
       await busy(go, status, async () => {
-        const result = await auth('verify', { type: 'email', email: address, token });
+        const result = await auth('verify', { type: 'email', email: target, token });
         if (result.ok && result.data.access_token) {
           keep(result.data);
-          location.hash = '#/';
+          pending = null;
+          history.replaceState(null, '', '#/');
           return route();
         }
         if (result.status === 429) throw new ForumError('code_wait');
         throw new ForumError('bad_code');
       });
     } } },
+      email ? [h('label', { for: 'code-email' }, 'Email address'), email] : null,
       h('label', { for: 'code' }, 'Code'),
       code,
       h('div', { class: 'buttons' }, go,
-        h('button', { type: 'button', class: 'link', on: { click: showSignIn } }, 'Use another address')),
+        h('button', { type: 'button', class: 'link', on: { click: () => { pending = null; visit('#/'); } } },
+          address ? 'Use another address' : 'Ask for a new code')),
       status);
     show(h('h1', {}, 'Check your email'),
-      h('p', {}, 'If ', h('strong', {}, address), ' has been invited, a code is on its way to it. ' +
-        'It works for 10 minutes. Look in your spam folder too.'),
+      address
+        ? h('p', {}, 'If ', h('strong', {}, address), ' has been invited, a code is on its way to it. ' +
+            'It works for 10 minutes. Look in your spam folder too.')
+        : h('p', {}, 'Type the email address you asked for a code with, and the code from the email. ' +
+            'A code works for 10 minutes. Look in your spam folder too.'),
       form);
   }
 

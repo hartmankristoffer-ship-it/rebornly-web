@@ -4,6 +4,9 @@
 #          supabase/tests run with pgTAP, plus the read-only and race probes.
 #   site:  no legal page ships an unfilled date, the three pages share one
 #          version, and the forum's address and its CSP agree.
+#   page:  the forum page in a real Chrome against a stub: the sign-in code
+#          step survives tabs, visibility, focus, freezing and a reload, and
+#          nothing is stored in the browser before sign-in.
 name: Forum tests
 
 on:
@@ -12,6 +15,7 @@ on:
       - 'supabase/**'
       - 'scripts/test-forum.sh'
       - 'scripts/check-site-texts.sh'
+      - 'scripts/test-forum-page.mjs'
       - 'forum/**'
       - 'privacy/**'
       - 'cookies/**'
@@ -38,3 +42,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check the legal pages and the forum's switch
         run: bash scripts/check-site-texts.sh
+
+  page:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Drive the forum page in Chrome
+        run: node scripts/test-forum-page.mjs
