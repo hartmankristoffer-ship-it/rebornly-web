@@ -18,6 +18,8 @@
     'Do not share anybody else\'s personal information, and think twice before sharing your own.',
     'No selling, advertising, fundraising or spam.',
     'Nothing illegal, and nothing you do not have the right to share.',
+    // Owner, 27 September 2026: a request, not a binding confidentiality duty.
+    'Please don\'t share screenshots or details of unreleased features outside the forum.',
     'You must be 18 or older.',
     'Moderators may hide posts or suspend accounts that break these rules, and will tell you why. ' +
       'Use Report on a post that breaks them, or email support@rebornlyapp.com.',

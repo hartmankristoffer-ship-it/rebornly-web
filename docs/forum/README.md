@@ -16,7 +16,7 @@ app.
 | Tests | `supabase/tests/forum.test.sql`, run by `scripts/test-forum.sh` and CI (`.github/workflows/forum-tests.yml`) |
 | Local development stack | `supabase/config.toml`, `supabase/seed.sql` |
 | Owner setup and daily use | `docs/forum/RUNBOOK.md` |
-| Proposed legal text changes | `docs/forum/LEGAL_TEXT_CHANGES.md` |
+| The website texts, version 1.1 | `docs/forum/LEGAL_TEXT_CHANGES.md` |
 
 ## How access works
 

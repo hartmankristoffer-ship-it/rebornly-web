@@ -78,9 +78,24 @@ public by design and safe to paste in chat:
 - Project URL, `https://<project-ref>.supabase.co`
 - **Publishable** key, `sb_publishable_…` (never the secret key)
 
-Claude then opens a small PR in rebornly-web that sets them in
-`forum/config.js` and puts the URL in `connect-src` in `forum/index.html`. The
-forum goes live when you merge it.
+Claude then opens two PRs.
+
+- **rebornly-web:** sets the two values in `forum/config.js`, puts the URL in
+  `connect-src` in `forum/index.html`, and fills in the effective date of the
+  texts' **version 1.1** (`docs/forum/LEGAL_TEXT_CHANGES.md`).
+- **The app repository:** a documents PR with the same date in
+  `docs/legal/website/`.
+
+The same day, in this order:
+
+1. You have moved to **Pro** (step 1). Version 1.1 says request logs are kept
+   7 days, which is true only on Pro.
+2. Merge both PRs.
+3. In the **Production** project (not the forum's), set the Edge Function
+   secret `REBORNLY_WEBSITE_PRIVACY_POLICY_VERSION` to `1.1` for
+   `website-intake`.
+
+The forum and the new texts go live together.
 
 ## 7. Your moderator role
 
