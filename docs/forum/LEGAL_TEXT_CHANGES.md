@@ -16,6 +16,10 @@ written into **version 1.1** of the three texts:
    texts. The owner moved Supabase to Pro the same day, before the switch-on.
    Until then the pages carried `2026-MM-DD`; `scripts/check-site-texts.sh`
    (CI job `site`) refuses to let a page ship like that.
+   The review and CI could not finish before midnight Swedish time, so the
+   merge falls on 28 September there. The owner kept 27 September (28 September
+   2026): it is still that day somewhere on Earth, for example in Hawaii, until
+   12:00 Swedish time on 28 September.
 2. **Confidentiality:** a request in the forum rules, not a binding duty. The
    rule reads "Please don't share screenshots or details of unreleased features
    outside the forum." There is nothing about it in the Terms.
