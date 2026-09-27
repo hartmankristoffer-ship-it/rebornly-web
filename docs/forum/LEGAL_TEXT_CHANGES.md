@@ -11,10 +11,11 @@ written into **version 1.1** of the three texts:
 
 ## Owner decisions, 27 September 2026
 
-1. **When 1.1 takes effect:** on the day the forum is switched on. It is
-   published in the same step, and the owner moves Supabase to Pro that day.
-   Until then the pages carry `2026-MM-DD`, and `scripts/check-site-texts.sh`
-   (CI job `site`) refuses to let them ship like that.
+1. **When 1.1 takes effect:** on the day the forum is switched on, published
+   in the same step: **27 September 2026**, the effective date in all three
+   texts. The owner moved Supabase to Pro the same day, before the switch-on.
+   Until then the pages carried `2026-MM-DD`; `scripts/check-site-texts.sh`
+   (CI job `site`) refuses to let a page ship like that.
 2. **Confidentiality:** a request in the forum rules, not a binding duty. The
    rule reads "Please don't share screenshots or details of unreleased features
    outside the forum." There is nothing about it in the Terms.
