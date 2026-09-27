@@ -33,8 +33,28 @@ app.
 - **Hidden posts** keep their text for the author and the moderators, and the
   author sees the reason (DSA Art. 17). For every other member a hidden post is
   gone: left out of the thread, its counts and its times.
+- **Hidden threads** (a moderator hid the opening post) are gone for everyone
+  who took no part in them. The author sees the thread with the reason. A
+  member who replied keeps the thread in view, without its title, and sees only
+  their own replies there, so their words do not vanish without a word.
+- **Erasure** (`forum.erase_member`) locks the member first. Every call a
+  member makes holds a shared lock on their row, so a post written while the
+  erasure runs is either wiped by it or refused. `supabase/tests/erase_race.sh`
+  proves this with two real sessions.
 - **The page** renders everything a member wrote as text (`textContent`), loads
   no outside script, and makes no request while `config.js` is empty.
+
+### Accepted trade-off: the sign-in endpoint shows who is invited
+
+The page answers the same whether or not an address is invited. Supabase Auth's
+own endpoint does not: anyone who calls `POST /auth/v1/otp` directly with the
+public key gets a 403 from the invitation hook for an uninvited address and a
+200 for an invited one. The alternative is to let every address through and
+check invitations only when joining. That would make the forum send a code
+email to any address anyone types in, which is worse: it can be used to flood a
+stranger's inbox from `rebornlyapp.com`. Supabase's per-IP rate limit on that
+endpoint bounds the guessing. What leaks is only that an address was invited to
+the beta forum.
 
 ## Testing
 
@@ -43,8 +63,9 @@ bash scripts/test-forum.sh
 ```
 
 This starts a throwaway `supabase/postgres` container, applies the migration and
-runs the pgTAP suite. It also checks that the rules version in `forum.js`
-matches the one the database accepts. Nothing shared is touched.
+runs the pgTAP suite. It then runs `erase_race.sh`, an erasure against a member
+who is writing at the same moment. It also checks that the rules version in
+`forum.js` matches the one the database accepts. Nothing shared is touched.
 
 To try the whole forum locally, run `npx supabase start` in this folder. It
 starts a stack of its own, with project id `rebornly-web-forum` on ports

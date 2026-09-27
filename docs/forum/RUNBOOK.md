@@ -101,20 +101,26 @@ The moderator role is only ever granted like this, by direct database access.
 
 Tick each one. If one fails, stop and tell Claude.
 
-1. **Uninvited address:** in a private window, ask for a code for an address
-   you have not invited. No email arrives.
-2. **Invited member:** invite a second address of your own (Moderation →
-   Invite), sign in with it in a private window and join.
-3. **Announcements are team-only:** as that member, open Announcements. There
-   is no *Start a thread* button.
-4. **No moderation for members:** as that member, go to
+You need two test addresses of your own (**A** and **B**) and three separate
+browsers or devices, because every private window of one browser shares one
+sign-in: for example your own browser as yourself, a phone as A, and a second
+browser (Edge, Firefox) as B.
+
+1. **Uninvited address:** in the second browser, ask for a code for B before
+   you have invited it. No email arrives.
+2. **Invited members:** as yourself, invite A and B (Moderation → Invite).
+   Sign in and join as A on the phone, and as B in the second browser.
+3. **Announcements are team-only:** as A, open Announcements. There is no
+   *Start a thread* button.
+4. **No moderation for members:** as A, go to
    `https://rebornlyapp.com/forum/#/mod`. It says *Not found*.
-5. **Hidden means gone:** as yourself, hide one of the member's replies with a
-   reason. The member sees it with your reason. Invite a second test address,
-   join with it in another private window: there the reply is not there at all.
-6. **Sign out and back in** as the member: a new code arrives and works.
-7. **Clean up:** run `select forum.erase_member('<test address>');` for each
-   test address.
+5. **A reply to hide:** as yourself, start a thread in General. As A, reply to it.
+6. **Hidden means gone:** as yourself, hide A's reply with a reason. A still
+   sees the reply, with your reason. B opens the same thread: the reply is not
+   there at all, and the thread shows no replies.
+7. **Sign out and back in** as A: a new code arrives and works.
+8. **Clean up:** run `select forum.erase_member('<A>');` and
+   `select forum.erase_member('<B>');`, and delete your test thread.
 
 ## 8. Everyday use
 

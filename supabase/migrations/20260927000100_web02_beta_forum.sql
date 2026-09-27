@@ -212,9 +212,15 @@ end;
 $$;
 
 -- The signed-in member, active; with p_moderator, also a moderator.
+--
+-- The member row is read FOR KEY SHARE, held to the end of the call. That
+-- lock conflicts only with erase_member's FOR UPDATE, so while a member is
+-- being erased every call they make waits, then finds no member and fails:
+-- nothing they write can slip past the erasure. (Volatile, because a
+-- non-volatile function may not lock rows.)
 create function forum.require_member(p_moderator boolean default false)
 returns forum.members
-language plpgsql stable set search_path = '' as $$
+language plpgsql volatile set search_path = '' as $$
 declare
   v_uid uuid := auth.uid();
   m forum.members;
@@ -222,7 +228,7 @@ begin
   if v_uid is null then
     perform forum.fail('not_signed_in');
   end if;
-  select * into m from forum.members where user_id = v_uid;
+  select * into m from forum.members where user_id = v_uid for key share;
   if not found then
     perform forum.fail('not_member');
   end if;
@@ -250,26 +256,45 @@ returns void language sql set search_path = '' as $$
   values (p_moderator, p_action, p_target, p_reason)
 $$;
 
--- A member may see a thread unless a moderator hid it; its author and the
--- moderators still see it (the author sees the reason).
-create function forum.thread_visible(t forum.threads, m forum.members) returns boolean
+-- Whether the member sees a thread in full: always, unless a moderator hid
+-- it; then only its author (who sees the reason) and the moderators.
+create function forum.thread_in_full(t forum.threads, m forum.members) returns boolean
 language sql stable set search_path = '' as $$
   select t.hidden_at is null or t.author_id = m.user_id or m.role = 'moderator'
 $$;
 
--- A post a moderator hid is gone for everyone but its author and the
--- moderators: it is left out of threads, counts and times, not shown as a
--- placeholder.
-create function forum.post_visible(p forum.posts, m forum.members) returns boolean
+-- Whether the thread is in the member's view at all. Besides the above, a
+-- member who replied in a thread a moderator then hid keeps it in view, so
+-- their own replies do not vanish without a word; they see only their own
+-- replies there, not its title (forum.thread_title) or anyone else's posts
+-- (forum.post_visible).
+create function forum.thread_visible(t forum.threads, m forum.members) returns boolean
 language sql stable set search_path = '' as $$
-  select p.hidden_at is null or p.author_id = m.user_id or m.role = 'moderator'
+  select forum.thread_in_full(t, m)
+      or exists (select 1 from forum.posts p where p.thread_id = t.id and p.author_id = m.user_id)
+$$;
+
+-- The title as the member may see it: none once deleted, none for a replier
+-- looking at a thread a moderator hid.
+create function forum.thread_title(t forum.threads, m forum.members) returns text
+language sql stable set search_path = '' as $$
+  select case when forum.thread_in_full(t, m) then nullif(t.title, '') end
+$$;
+
+-- A post a moderator hid is gone for everyone but its author and the
+-- moderators: left out of threads, counts and times, not shown as a
+-- placeholder. In a hidden thread a replier sees only their own posts.
+create function forum.post_visible(p forum.posts, t forum.threads, m forum.members) returns boolean
+language sql stable set search_path = '' as $$
+  select p.author_id = m.user_id or m.role = 'moderator'
+      or (p.hidden_at is null and forum.thread_in_full(t, m))
 $$;
 
 -- When the last post the given member may see was written.
 create function forum.last_visible_at(t forum.threads, m forum.members) returns timestamptz
 language sql stable set search_path = '' as $$
   select coalesce(max(p.created_at), t.created_at)
-  from forum.posts p where p.thread_id = t.id and forum.post_visible(p, m)
+  from forum.posts p where p.thread_id = t.id and forum.post_visible(p, t, m)
 $$;
 
 create function forum.author_json(p_author uuid) returns jsonb
@@ -452,10 +477,18 @@ begin
                                              'created_at', r.created_at, 'resolution', r.resolution) order by r.created_at)
                                      from forum.reports r join forum.posts p on p.id = r.post_id
                                      where p.author_id = v_uid), '[]'::jsonb),
-    -- Moderator actions about this person or their content, and any they took.
-    'moderation', coalesce((select jsonb_agg(jsonb_build_object('action', l.action, 'target', l.target,
-                                    'reason', l.reason, 'created_at', l.created_at,
-                                    'by_this_person', l.moderator_id = v_uid) order by l.id)
+    -- Moderator actions about this person or their content in full. Actions
+    -- this person took as a moderator about someone else are listed without
+    -- their target or reason, which are that other person's data (Art. 15(4)).
+    'moderation', coalesce((select jsonb_agg(case
+                                      when l.target = any(v_targets) then
+                                        jsonb_build_object('action', l.action, 'target', l.target,
+                                          'reason', l.reason, 'created_at', l.created_at,
+                                          'by_this_person', l.moderator_id is not distinct from v_uid)
+                                      else
+                                        jsonb_build_object('action', l.action, 'created_at', l.created_at,
+                                          'by_this_person', true)
+                                    end order by l.id)
                             from forum.moderation_log l
                             where l.target = any(v_targets) or l.moderator_id = v_uid), '[]'::jsonb));
 end;
@@ -477,6 +510,9 @@ declare
   v_log integer := 0;
 begin
   select u.id into v_uid from auth.users u where lower(u.email) = v_email;
+  -- Lock the member first: any call they are making finishes before this
+  -- goes on, and any later one waits and then fails (see require_member).
+  perform 1 from forum.members where user_id = v_uid for update;
   -- Collected before anything is wiped or deleted.
   v_targets := forum.targets_about(v_email, v_uid);
 
@@ -643,7 +679,7 @@ begin
         select t.pinned, v.last_at, t.id,
                jsonb_build_object(
                  'id', t.id,
-                 'title', nullif(t.title, ''),
+                 'title', forum.thread_title(t, m),
                  'author', forum.author_json(t.author_id),
                  'created_at', t.created_at,
                  'last_post_at', v.last_at,
@@ -656,7 +692,7 @@ begin
         cross join lateral (
           select forum.last_visible_at(t, m) as last_at,
                  (select count(*) from forum.posts p
-                  where p.thread_id = t.id and not p.is_opening and forum.post_visible(p, m)) as replies
+                  where p.thread_id = t.id and not p.is_opening and forum.post_visible(p, t, m)) as replies
         ) v
         where t.category_id = c.id and forum.thread_visible(t, m)
         order by t.pinned desc, v.last_at desc, t.id
@@ -665,7 +701,10 @@ begin
 end;
 $$;
 
-create function public.forum_thread(p_thread_id uuid, p_limit integer default 50, p_offset integer default 0)
+-- Posts come in pages after a cursor, the id of the last post already shown
+-- (p_after), so a post hidden or restored meanwhile never makes the next page
+-- skip or repeat one.
+create function public.forum_thread(p_thread_id uuid, p_limit integer default 50, p_after uuid default null)
 returns jsonb
 language plpgsql stable security definer set search_path = '' as $$
 declare
@@ -673,17 +712,23 @@ declare
   t forum.threads;
   c forum.categories;
   v_limit integer := least(greatest(coalesce(p_limit, 50), 1), 100);
-  v_offset integer := greatest(coalesce(p_offset, 0), 0);
+  v_after bigint := 0;
 begin
   select * into t from forum.threads where id = p_thread_id;
   if not found or not forum.thread_visible(t, m) then
     perform forum.fail('not_found');
   end if;
+  if p_after is not null then
+    select p.seq into v_after from forum.posts p where p.id = p_after and p.thread_id = t.id;
+    if not found then
+      perform forum.fail('not_found');
+    end if;
+  end if;
   select * into c from forum.categories where id = t.category_id;
   return jsonb_build_object(
     'thread', jsonb_build_object(
       'id', t.id,
-      'title', nullif(t.title, ''),
+      'title', forum.thread_title(t, m),
       'category', jsonb_build_object('slug', c.slug, 'title', c.title),
       'author', forum.author_json(t.author_id),
       'pinned', t.pinned,
@@ -694,13 +739,13 @@ begin
                             then t.hidden_reason end,
       'can_reply', (not t.locked and t.hidden_at is null) or m.role = 'moderator'),
     'total', (select count(*) from forum.posts p
-              where p.thread_id = t.id and forum.post_visible(p, m)),
+              where p.thread_id = t.id and forum.post_visible(p, t, m)),
     'posts', coalesce((
       select jsonb_agg(forum.post_json(p, m) order by p.seq)
       from (select * from forum.posts p2
-            where p2.thread_id = t.id and forum.post_visible(p2, m)
+            where p2.thread_id = t.id and p2.seq > v_after and forum.post_visible(p2, t, m)
             order by p2.seq
-            limit v_limit offset v_offset) p), '[]'::jsonb));
+            limit v_limit) p), '[]'::jsonb));
 end;
 $$;
 
@@ -823,7 +868,7 @@ begin
     perform forum.fail('not_found');
   end if;
   select * into t from forum.threads where id = p.thread_id;
-  if not forum.thread_visible(t, m) or not forum.post_visible(p, m) or p.deleted_at is not null then
+  if not forum.thread_visible(t, m) or not forum.post_visible(p, t, m) or p.deleted_at is not null then
     perform forum.fail('not_found');
   end if;
   if p.author_id = m.user_id then

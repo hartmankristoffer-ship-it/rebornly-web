@@ -56,5 +56,8 @@ for f in supabase/tests/*.test.sql; do
   echo "$out" | grep -Eq '^1\.\.[0-9]+' || status=1
 done
 
+# Two sessions at once: an erasure against a member who is writing.
+bash supabase/tests/erase_race.sh "$NAME" || status=1
+
 if [ "$status" = "0" ]; then echo "forum tests: PASS"; else echo "forum tests: FAIL"; fi
 exit "$status"

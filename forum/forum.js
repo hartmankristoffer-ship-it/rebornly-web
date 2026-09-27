@@ -427,7 +427,7 @@
 
   function threadRow(t) {
     return h('li', {}, h('a', { class: 'row', href: '#/t/' + t.id },
-      h('span', { class: 'title' }, t.title || 'Deleted by its author',
+      h('span', { class: 'title' }, t.title || (t.hidden ? 'Hidden by a moderator' : 'Deleted by its author'),
         t.pinned ? h('span', { class: 'tag' }, 'Pinned') : null,
         t.locked ? h('span', { class: 'tag' }, 'Locked') : null,
         t.hidden ? h('span', { class: 'tag' }, 'Hidden') : null),
@@ -580,20 +580,35 @@
     body.focus();
   }
 
+  // Pages of a thread follow the last post already shown (a cursor, not an
+  // offset), so a post hidden or restored meanwhile never shifts them.
+  const PAGE = 100;
+  const MAX_PAGES_AT_ONCE = 10;
+  const lastId = (list) => (list.length ? list[list.length - 1].id : null);
+
   async function showThread(n, id, scrollToEnd) {
-    const data = await load(n, 'forum_thread', { p_thread_id: id, p_limit: 100, p_offset: 0 });
+    const data = await load(n, 'forum_thread', { p_thread_id: id, p_limit: PAGE });
     if (!data || !current(n)) return;
+    // A thread is shown whole: later pages are fetched straight away, up to a
+    // generous limit; past it, "Show more posts" continues from the cursor.
+    let loaded = data.posts.slice();
+    let full = data.posts.length < PAGE;
+    for (let page = 1; !full && page < MAX_PAGES_AT_ONCE; page += 1) {
+      const next = await load(n, 'forum_thread', { p_thread_id: id, p_limit: PAGE, p_after: lastId(loaded) });
+      if (!next || !current(n)) return;
+      loaded = loaded.concat(next.posts);
+      full = next.posts.length < PAGE;
+    }
     const t = data.thread;
     const reload = (end) => showThread(seq, id, end);
-    const posts = h('div', {}, data.posts.map((p) => postView(p, t, reload)));
-    let shown = data.posts.length;
+    const posts = h('div', {}, loaded.map((p) => postView(p, t, reload)));
     const status = statusLine();
-    const more = h('button', { class: 'button secondary', type: 'button', hidden: shown >= data.total, on: { click: () =>
+    const more = h('button', { class: 'button secondary', type: 'button', hidden: full, on: { click: () =>
       busy(more, status, async () => {
-        const next = await rpc('forum_thread', { p_thread_id: id, p_limit: 100, p_offset: shown });
+        const next = await rpc('forum_thread', { p_thread_id: id, p_limit: PAGE, p_after: lastId(loaded) });
         next.posts.forEach((p) => posts.append(postView(p, t, reload)));
-        shown += next.posts.length;
-        more.hidden = shown >= next.total || next.posts.length === 0;
+        loaded = loaded.concat(next.posts);
+        more.hidden = next.posts.length < PAGE;
       }) } }, 'Show more posts');
 
     const tools = [];
@@ -623,7 +638,7 @@
     }
 
     show(h('p', { class: 'crumbs' }, h('a', { href: '#/' }, 'Forum'), ' › ', h('a', { href: '#/c/' + t.category.slug }, t.category.title)),
-      h('h1', {}, t.title || 'Deleted by its author'),
+      h('h1', {}, t.title || (t.hidden ? 'Hidden by a moderator' : 'Deleted by its author')),
       readOnlyNote(),
       h('p', { class: 'muted' },
         t.pinned ? h('span', { class: 'tag' }, 'Pinned') : null,
@@ -631,6 +646,8 @@
         t.hidden ? h('span', { class: 'tag' }, 'Hidden') : null),
       t.hidden && t.hidden_reason ? h('p', { class: 'panel' }, 'A moderator hid this thread: ', t.hidden_reason,
         '. Only its author and the moderators can see it.') : null,
+      t.hidden && !t.hidden_reason && !me.moderator ? h('p', { class: 'panel' }, 'A moderator hid this thread. ' +
+        'You still see your own replies here and can delete them.') : null,
       tools, posts,
       h('div', { class: 'buttons' }, more), status,
       reply);

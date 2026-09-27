@@ -72,6 +72,11 @@ The forum's own project does not use that secret.
 > reports and sign-in log entries, wipe what you wrote, and remove your
 > address and our reasons about you from the moderation log. Replies others
 > wrote stay.
+>
+> Deleted data can remain for a short time in our provider's daily backups
+> and technical logs, which it keeps for up to 7 days, and is then gone. *(For
+> the owner to confirm in the Supabase dashboard: backup retention on the Pro
+> plan, and log retention, before 1.1 is published.)*
 
 ### §4 "Technical data" — add to the list of request logs
 
@@ -99,8 +104,8 @@ The forum's own project does not use that secret.
 
 > The beta forum's database can be read and written only through checked
 > functions that let members see nothing but the forum itself; you sign in with
-> a one-time code sent to your email address, and only invited addresses can
-> sign in.
+> a one-time code sent to your email address, and only an address we have
+> invited can create a forum account.
 
 ---
 
