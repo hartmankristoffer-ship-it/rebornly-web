@@ -1,0 +1,104 @@
+/* WEB-02: the beta forum, in the site's own tokens (see /beta/). */
+:root {
+  color-scheme: light;
+  --ivory: #f8f5f0; --ink: #22302a; --body: #5e625c; --muted: #6e7269; --line: #e7ded6;
+  --card: #ffffff; --sage: #6a7569; --sage-dark: #5b6658; --warn: #8a4b3c; --note: #f1ebe4;
+  --serif: "Noto Serif", "DM Serif Display", Georgia, "Times New Roman", serif;
+  --sans: Inter, Roboto, "Helvetica Neue", Arial, system-ui, -apple-system, sans-serif;
+  --gutter: clamp(16px, 5vw, 72px);
+}
+* { box-sizing: border-box; }
+html { background: var(--ivory); }
+body {
+  margin: 0; min-height: 100svh; display: flex; flex-direction: column;
+  background: var(--ivory); color: var(--body); font-family: var(--sans);
+  font-size: 17px; line-height: 1.6; -webkit-font-smoothing: antialiased;
+}
+[hidden] { display: none !important; }
+.shell { width: min(100%, 760px); margin: 0 auto; padding-inline: var(--gutter); }
+.site-header .shell { display: flex; align-items: center; justify-content: center; min-height: 74px; padding-block: 8px; }
+.site-header img { width: 112px; height: auto; mix-blend-mode: multiply; display: block; }
+main { flex: 1 0 auto; }
+main .shell { padding-block: clamp(20px, 5vw, 48px); }
+h1, h2 { font-family: var(--serif); color: var(--ink); font-weight: 400; letter-spacing: -.015em; }
+h1 { margin: 0 0 14px; font-size: clamp(28px, 7vw, 38px); line-height: 1.14; overflow-wrap: anywhere; }
+h2 { margin: 28px 0 10px; font-size: 22px; line-height: 1.25; }
+p { margin: 0 0 14px; max-width: 62ch; }
+a { color: var(--ink); }
+a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible {
+  outline: 3px solid var(--ink); outline-offset: 3px; border-radius: 4px;
+}
+.muted { color: var(--muted); font-size: 15px; }
+.small { font-size: 14px; }
+
+/* The signed-in bar */
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 0 0 22px;
+  padding-bottom: 12px; border-bottom: 1px solid var(--line); font-size: 15px; }
+.bar .who { margin-right: auto; color: var(--ink); }
+.bar a, .bar button.link { color: var(--muted); }
+
+/* Lists of categories and threads */
+.list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.list li { border-bottom: 1px solid var(--line); }
+.list a.row { display: block; padding: 14px 2px; text-decoration: none; color: inherit; }
+.list a.row:hover .title, .list a.row:focus-visible .title { text-decoration: underline; }
+.row .title { display: block; color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
+.row .meta { display: block; color: var(--muted); font-size: 14px; margin-top: 2px; }
+.row .desc { display: block; font-size: 15px; margin-top: 2px; }
+.tag { display: inline-block; margin-left: 6px; padding: 0 8px; border-radius: 999px; background: var(--note);
+  color: var(--ink); font-size: 12px; font-weight: 600; vertical-align: 2px; }
+.crumbs { margin: 0 0 8px; font-size: 15px; }
+.crumbs a { color: var(--muted); }
+
+/* Posts */
+.post { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin: 0 0 14px; }
+.post header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; margin-bottom: 8px; }
+.post .author { color: var(--ink); font-weight: 600; }
+.post .when { color: var(--muted); font-size: 14px; }
+.post .body { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); margin: 0; }
+.post .notice { background: var(--note); border-radius: 10px; padding: 8px 12px; font-size: 15px; margin: 0 0 10px; }
+.post .gone { color: var(--muted); font-style: italic; margin: 0; }
+.post .actions { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 12px; font-size: 14px; }
+.post.is-hidden { border-style: dashed; }
+.post > .status:empty, .post > div:empty { display: none; }
+.buttons:not(:has(> :not([hidden]))) { display: none; }
+
+/* Forms */
+.form label { display: block; margin: 16px 0 6px; color: var(--ink); font-size: 15px; font-weight: 600; }
+.form input[type=text], .form input[type=email], .form textarea {
+  width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px;
+  background: #fff; color: var(--ink); font: 16px/1.45 var(--sans);
+}
+.form input.code { letter-spacing: .3em; font-size: 22px; max-width: 14ch; }
+.form textarea { min-height: 150px; resize: vertical; }
+.form .check { display: flex; align-items: flex-start; gap: 10px; font-weight: 400; color: var(--body); }
+.form .check input { margin-top: 6px; accent-color: var(--ink); }
+.form .hint { color: var(--muted); font-size: 14px; margin: 6px 0 0; }
+.buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 18px; }
+.button { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 22px;
+  border: 0; border-radius: 999px; background: var(--sage); color: #fff; font: 600 15px/1 var(--sans);
+  cursor: pointer; text-decoration: none; }
+.button:hover { background: var(--sage-dark); }
+.button.secondary { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.button[disabled] { opacity: .6; cursor: progress; }
+button.link { background: none; border: 0; padding: 0; font: inherit; color: var(--muted);
+  text-decoration: underline; cursor: pointer; }
+button.link:hover { color: var(--ink); }
+button.link.danger { color: var(--warn); }
+.status { min-height: 24px; margin-top: 10px; }
+.status.error { color: var(--warn); }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin: 0 0 14px; }
+.rules { padding-left: 22px; max-width: 62ch; }
+.rules li { margin: 0 0 8px; }
+.table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.table th, .table td { text-align: left; vertical-align: top; padding: 8px 6px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.table th { color: var(--ink); }
+
+/* Footer, as on the other pages */
+.site-footer .shell { padding-block: 26px; display: grid; justify-items: center; gap: 10px; text-align: center; }
+.footer-links { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 14px; }
+.footer-links a { color: var(--muted); font-size: 13px; text-decoration: none; }
+.footer-links a:hover, .footer-links a:focus-visible { color: var(--ink); text-decoration: underline; }
+.footer-links span { color: var(--line); }
+.site-footer .copyright { margin: 0; color: var(--muted); font-size: 12px; }
+.site-footer img { width: 92px; height: auto; mix-blend-mode: multiply; display: block; }
