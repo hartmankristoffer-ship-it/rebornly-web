@@ -46,9 +46,15 @@ The forum's own project does not use that secret.
 >   rules you accepted, and when;
 > - what you write: threads, replies and edits;
 > - reports you send about posts, and reports others send about yours;
-> - moderators' decisions about your posts or your account, with their reasons;
+> - moderators' decisions about your posts or your account, with their reasons,
+>   in a moderation log;
 > - your sign-in session: when you signed in, and the IP address and browser
->   you signed in from.
+>   you signed in from;
+> - a security log of sign-in events kept by our sign-in service (for example
+>   when a code was sent or used), which names your email address.
+>
+> A post a moderator hides disappears for other members; you still see it,
+> with the reason.
 >
 > **Who sees it.** Other members see your forum name and what you write. They
 > never see your email address. The Rebornly team, as moderators, sees your
@@ -62,7 +68,10 @@ The forum's own project does not use that secret.
 > gone. The forum is used only before and during the beta. When the beta ends,
 > the forum becomes read-only for 30 days and is then deleted completely,
 > including every account, post, report and log. You can ask us to delete your
-> forum account earlier; see §7.
+> forum account earlier; see §7. We then delete your account, sessions,
+> reports and sign-in log entries, wipe what you wrote, and remove your
+> address and our reasons about you from the moderation log. Replies others
+> wrote stay.
 
 ### §4 "Technical data" — add to the list of request logs
 

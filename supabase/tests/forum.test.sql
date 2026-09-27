@@ -45,6 +45,60 @@ begin
 end;
 $$;
 
+-- The `authenticated` role with no user id in the token.
+create function tests.as_nobody(p_sql text) returns text
+language plpgsql as $$
+declare
+  v text;
+begin
+  perform set_config('request.jwt.claim.sub', '', true);
+  execute 'set local role authenticated';
+  begin
+    execute p_sql into v;
+    v := 'ok:' || coalesce(v, '');
+  exception when others then
+    v := 'error:' || sqlerrm;
+  end;
+  execute 'reset role';
+  return v;
+end;
+$$;
+
+-- One harmless call of every member and moderator function. Each refusal
+-- test below runs all of them, and a pin checks the list is complete, so a
+-- new function cannot arrive without its refusals being tested.
+create table tests.calls (name text primary key, moderator boolean not null, call text not null);
+insert into tests.calls (name, moderator, call) values
+  ('forum_categories',         false, $$select public.forum_categories()::text$$),
+  ('forum_threads',            false, $$select public.forum_threads('general')::text$$),
+  ('forum_thread',             false, $$select public.forum_thread('00000000-0000-4000-8000-000000000000')::text$$),
+  ('forum_create_thread',      false, $$select public.forum_create_thread('general', 'A title', 'A body')::text$$),
+  ('forum_reply',              false, $$select public.forum_reply('00000000-0000-4000-8000-000000000000', 'A body')::text$$),
+  ('forum_edit_post',          false, $$select public.forum_edit_post('00000000-0000-4000-8000-000000000000', 'A body')::text$$),
+  ('forum_delete_post',        false, $$select public.forum_delete_post('00000000-0000-4000-8000-000000000000')::text$$),
+  ('forum_report_post',        false, $$select public.forum_report_post('00000000-0000-4000-8000-000000000000', 'A reason')::text$$),
+  ('forum_mod_hide_post',      true,  $$select public.forum_mod_hide_post('00000000-0000-4000-8000-000000000000', 'A reason')::text$$),
+  ('forum_mod_unhide_post',    true,  $$select public.forum_mod_unhide_post('00000000-0000-4000-8000-000000000000')::text$$),
+  ('forum_mod_set_thread',     true,  $$select public.forum_mod_set_thread('00000000-0000-4000-8000-000000000000', true, true)::text$$),
+  ('forum_mod_reports',        true,  $$select public.forum_mod_reports()::text$$),
+  ('forum_mod_resolve_report', true,  $$select public.forum_mod_resolve_report('00000000-0000-4000-8000-000000000000', 'A note')::text$$),
+  ('forum_mod_invite',         true,  $$select public.forum_mod_invite('someone@example.com')::text$$),
+  ('forum_mod_revoke_invite',  true,  $$select public.forum_mod_revoke_invite('someone@example.com')::text$$),
+  ('forum_mod_invitations',    true,  $$select public.forum_mod_invitations()::text$$),
+  ('forum_mod_members',        true,  $$select public.forum_mod_members()::text$$),
+  ('forum_mod_suspend',        true,  $$select public.forum_mod_suspend('00000000-0000-4000-8000-000000000000', 'A reason')::text$$),
+  ('forum_mod_unsuspend',      true,  $$select public.forum_mod_unsuspend('00000000-0000-4000-8000-000000000000')::text$$);
+
+-- Which calls did NOT answer as expected; null when every one did.
+create function tests.offenders(p_uid uuid, p_expected text, p_moderator_only boolean) returns text
+language sql as $$
+  select string_agg(c.name || ' -> ' || r.result, '; ' order by c.name)
+  from tests.calls c
+  cross join lateral (select tests.as_user(p_uid, c.call) as result) r
+  where (not p_moderator_only or c.moderator)
+    and r.result not like p_expected
+$$;
+
 create function tests.val(p text) returns jsonb
 language sql as $$
   select case when p like 'ok:%' then substr(p, 4)::jsonb
@@ -62,7 +116,7 @@ insert into auth.users (id, email) values
 insert into forum.invitations (email) values
   ('alice@example.com'), ('bob@example.com'), ('owner@example.com');
 
-select plan(109);
+select plan(143);
 
 -- ---------------------------------------------------------------------------
 -- 1. Privileges: nothing is reachable except the checked functions
@@ -135,6 +189,22 @@ select is(tests.as_user(:'carol', $$select public.forum_join('Carol', true, '1.0
           'error:forum:not_invited', 'an uninvited user cannot join');
 select is(tests.as_user(:'carol', 'select public.forum_categories()::text'),
           'error:forum:not_member', 'a non-member cannot read the forum');
+select set_eq($$select name from tests.calls$$,
+              $$select p.proname::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                where n.nspname = 'public' and p.proname like 'forum\_%'
+                  and p.proname not in ('forum_before_user_created', 'forum_me', 'forum_join')$$,
+              'every member and moderator function is in the refusal list');
+select is(tests.offenders(:'carol', 'error:forum:not_member', false), null,
+          'a signed-in non-member is refused by every member and moderator function');
+select is(tests.offenders(null, 'error:permission denied%', false), null,
+          'anon is refused by every member and moderator function');
+select is((select string_agg(c.name || ' -> ' || r, '; ')
+           from (select name, call from tests.calls
+                 union all select 'forum_me', 'select public.forum_me()::text'
+                 union all select 'forum_join', $j$select public.forum_join('Nobody', true, '1.0')::text$j$) c
+           cross join lateral tests.as_nobody(c.call) r
+           where r <> 'error:forum:not_signed_in'), null,
+          'a token without a user is refused by every function as not_signed_in');
 select is(tests.val(tests.as_user(:'alice', 'select public.forum_me()::text')) ->> 'state',
           'invited', 'an invited user is invited before joining');
 select is(tests.as_user(:'alice', $$select public.forum_join('Alice', false, '1.0')::text$$),
@@ -162,6 +232,8 @@ select is(tests.val(tests.as_user(:'mod', $$select public.forum_join('Therese', 
 update forum.members set role = 'moderator' where user_id = :'mod';
 select is(tests.val(tests.as_user(:'mod', 'select public.forum_me()::text')) ->> 'moderator',
           'true', 'the moderator role, set by direct access, shows in forum_me');
+select is(tests.offenders(:'alice', 'error:forum:not_moderator', true), null,
+          'a member is refused by every moderator function');
 
 -- ---------------------------------------------------------------------------
 -- 4. Threads and replies
@@ -242,9 +314,26 @@ select is(jsonb_array_length(tests.val(tests.as_user(:'mod', 'select public.foru
 
 select is(tests.as_user(:'mod', format('select public.forum_mod_hide_post(%L, %L)::text', :'p2', 'Off topic for this thread')),
           'ok:', 'the moderator hides a reply with a reason');
-select ok((tests.val(tests.as_user(:'alice', format('select public.forum_thread(%L)::text', :'t1'))) #> '{posts,1}')
-          @> '{"hidden": true, "body": null, "hidden_reason": null}',
-          'other members see neither the hidden text nor the reason');
+select ok(tests.as_user(:'alice', format('select public.forum_thread(%L)::text', :'t1')) !~ :'p2'
+          and tests.as_user(:'alice', format('select public.forum_thread(%L)::text', :'t1')) !~ 'A reply|Off topic',
+          'another member does not see the hidden reply at all: no id, no text, no reason');
+select is(tests.val(tests.as_user(:'alice', format('select public.forum_thread(%L)::text', :'t1'))) ->> 'total',
+          '1', 'the hidden reply is left out of the thread''s count for other members');
+select is(tests.val(tests.as_user(:'alice', $$select public.forum_threads('general')::text$$)) #>> '{threads,0,replies}',
+          '0', 'the hidden reply is left out of the reply count in the list');
+-- Everything here runs in one transaction, so every now() is equal; move the
+-- hidden reply a minute later so the time comparison can tell them apart.
+update forum.posts set created_at = created_at + interval '1 minute' where id = :'p2';
+select is(tests.val(tests.as_user(:'alice', $$select public.forum_threads('general')::text$$)) #>> '{threads,0,last_post_at}',
+          tests.val(tests.as_user(:'alice', format('select public.forum_thread(%L)::text', :'t1'))) #>> '{posts,0,created_at}',
+          'the list''s last-post time ignores the hidden reply');
+select is(tests.val(tests.as_user(:'mod', $$select public.forum_threads('general')::text$$)) #>> '{threads,0,last_post_at}',
+          tests.val(tests.as_user(:'mod', format('select public.forum_thread(%L)::text', :'t1'))) #>> '{posts,1,created_at}',
+          'the moderator''s list counts the hidden reply''s time');
+select is(tests.as_user(:'alice', format('select public.forum_report_post(%L, %L)::text', :'p2', 'Reporting a ghost')),
+          'error:forum:not_found', 'a hidden reply cannot be reported by someone who cannot see it');
+select is(tests.val(tests.as_user(:'mod', format('select public.forum_thread(%L)::text', :'t1'))) ->> 'total',
+          '2', 'the moderator still sees the hidden reply');
 select ok((tests.val(tests.as_user(:'bob', format('select public.forum_thread(%L)::text', :'t1'))) #> '{posts,1}')
           @> '{"hidden": true, "body": "A reply", "hidden_reason": "Off topic for this thread"}',
           'the author sees her hidden text and the reason');
@@ -295,6 +384,8 @@ select is(tests.as_user(:'carol', 'select public.forum_categories()::text'),
           'error:forum:suspended', 'a suspended member cannot read the forum');
 select is(tests.val(tests.as_user(:'carol', 'select public.forum_me()::text')) ->> 'suspended_reason',
           'Repeated rude replies', 'a suspended member is told why');
+select is(tests.offenders(:'carol', 'error:forum:suspended', false), null,
+          'a suspended member is refused by every member and moderator function');
 select is(tests.as_user(:'mod', format('select public.forum_mod_suspend(%L, %L)::text', :'mod', 'Testing myself')),
           'error:forum:cannot_suspend_moderator', 'a moderator cannot be suspended through the forum');
 select is(tests.as_user(:'mod', format('select public.forum_mod_unsuspend(%L)::text', :'carol')),
@@ -366,11 +457,51 @@ select alike(tests.as_user(:'alice', $$select forum.erase_member('bob@example.co
              'error:permission denied%', 'a member cannot call the erasure function');
 select alike(tests.as_user(:'alice', $$select forum.export_member('bob@example.com')::text$$),
              'error:permission denied%', 'a member cannot call the export function');
+select throws_ok($$select forum.erase_member('  ')$$, 'P0001', 'forum:invalid_email',
+                 'the erasure refuses an empty address instead of matching everything');
+select throws_ok($$select forum.export_member('not-an-email')$$, 'P0001', 'forum:invalid_email',
+                 'the export refuses something that is not an address');
+
+-- Give Bob a history that names him everywhere it can: the moderator invites
+-- him again and suspends him, hides one of his replies after Alice reports it,
+-- resolves the report, and Supabase Auth's sign-in log names him by address
+-- and by id. Two near misses in that log must survive his erasure.
+select id as p4 from forum.posts
+ where author_id = :'bob' and thread_id = :'t2' and deleted_at is null order by seq limit 1 \gset
+select is(tests.as_user(:'mod', $$select public.forum_mod_invite('bob@example.com')::text$$), 'ok:',
+          'setup: Bob is invited again (the log records his address)');
+select is(tests.as_user(:'alice', format('select public.forum_report_post(%L, %L)::text', :'p4', 'Bob is being rude here')),
+          'ok:', 'setup: Alice reports one of Bob''s replies');
+select is(tests.as_user(:'mod', format('select public.forum_mod_hide_post(%L, %L)::text', :'p4', 'Rude reply by Bob')),
+          'ok:', 'setup: the moderator hides it');
+select id as r2 from forum.reports where post_id = :'p4' \gset
+select is(tests.as_user(:'mod', format('select public.forum_mod_resolve_report(%L, %L)::text', :'r2', 'Hid Bob''s reply')),
+          'ok:', 'setup: the moderator resolves the report');
+select is(tests.as_user(:'mod', format('select public.forum_mod_suspend(%L, %L)::text', :'bob', 'Bob was rude twice')),
+          'ok:', 'setup: the moderator suspends Bob');
+insert into auth.audit_log_entries (id, payload, created_at) values
+  (gen_random_uuid(), json_build_object('action', 'login', 'actor_username', 'bob@example.com'), now()),
+  (gen_random_uuid(), json_build_object('action', 'token_refreshed', 'actor_id', :'bob'), now()),
+  (gen_random_uuid(), json_build_object('action', 'login', 'actor_username', 'xbob@example.com'), now()),
+  (gen_random_uuid(), json_build_object('action', 'login', 'actor_username', 'bob@example.com.au'), now());
+
 select is(jsonb_array_length(forum.export_member(' BOB@example.com ') -> 'posts'),
           (select count(*)::integer from forum.posts where author_id = :'bob'),
           'the export holds every post of the member');
 select is(forum.export_member('bob@example.com') #>> '{member,display_name}', 'Bob',
           'the export holds the membership');
+select is(forum.export_member('bob@example.com') #>> '{account,email}', 'bob@example.com',
+          'the export holds the sign-in account');
+select is(jsonb_array_length(forum.export_member('bob@example.com') -> 'sign_in_log'), 2,
+          'the export holds exactly the sign-in log entries that name him');
+select ok(forum.export_member('bob@example.com') -> 'moderation'
+          @> '[{"action": "invite"}, {"action": "suspend", "reason": "Bob was rude twice"},
+               {"action": "hide_post", "reason": "Rude reply by Bob"}, {"action": "resolve_report"}]',
+          'the export holds the moderator actions about him and his posts');
+select ok(forum.export_member('bob@example.com') -> 'reports_about_posts' @> '[{"reason": "Bob is being rude here"}]'
+          and forum.export_member('bob@example.com')::text !~ :'alice',
+          'the export holds reports about his posts without saying who made them');
+
 select is(forum.erase_member('bob@example.com') ->> 'account', 'true', 'the erasure finds the account');
 select ok(not exists (select 1 from auth.users where id = :'bob')
           and not exists (select 1 from forum.members where user_id = :'bob')
@@ -378,8 +509,37 @@ select ok(not exists (select 1 from auth.users where id = :'bob')
           'the account, the membership and the invitation are gone');
 select is((select count(*) from forum.posts where body like 'Reply %' or body = 'A reply'),
           0::bigint, 'the erased member''s texts are wiped');
-select is(tests.val(tests.as_user(:'alice', format('select public.forum_thread(%L)::text', :'t1'))) #>> '{posts,1,author,name}',
+select is((select count(*) from forum.moderation_log
+           where target in ('bob@example.com', :'bob') or moderator_id = :'bob'),
+          0::bigint, 'no moderation log row names his address or his id');
+select is((select count(*) from forum.moderation_log
+           where reason ~* 'bob' or target ~* 'bob'), 0::bigint,
+          'no moderator''s words about him or his posts are left in the log');
+select ok((select count(*) from forum.moderation_log where target = 'erased') >= 2,
+          'the log keeps that actions happened, without saying about whom');
+select is((select count(*) from forum.reports where post_id = :'p4'), 0::bigint,
+          'reports about his posts are deleted');
+select is((select string_agg(payload ->> 'actor_username', ',' order by payload ->> 'actor_username')
+           from auth.audit_log_entries),
+          'bob@example.com.au,xbob@example.com',
+          'his sign-in log entries are deleted and the near misses stay');
+select ok(tests.as_user(:'alice', format('select public.forum_thread(%L)::text', :'t2')) !~ :'p4',
+          'his hidden reply stays hidden from other members after the erasure');
+select is((select hidden_reason from forum.posts where id = :'p4'), 'Erased on request',
+          'the moderator''s reason about his hidden reply is replaced');
+select is(tests.val(tests.as_user(:'alice', format('select public.forum_thread(%L)::text', :'t2'))) #>> '{posts,1,author,name}',
           null, 'an erased member''s place in a thread shows no name');
+select ok(forum.export_member('bob@example.com') @> '{"account": null, "moderation": [], "sign_in_log": [], "posts": []}',
+          'after the erasure an export for his address finds nothing');
+
+select is(tests.as_user(:'mod', $$select public.forum_mod_invite('dave@example.com')::text$$), 'ok:',
+          'setup: an address is invited but never signs in');
+select ok(forum.erase_member('Dave@Example.com') @> '{"account": false}',
+          'erasing an address that never signed in reports no account');
+-- A separate statement: one statement sees the data as it was when it began.
+select ok(not exists (select 1 from forum.moderation_log where target = 'dave@example.com')
+          and not exists (select 1 from forum.invitations where email = 'dave@example.com'),
+          'erasing an address that never signed in removes the invitation and its log rows');
 
 select * from finish();
 rollback;

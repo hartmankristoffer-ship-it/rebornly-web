@@ -30,9 +30,9 @@ app.
   membership first. `anon` can call none of them.
 - **Moderators** are members with `role = 'moderator'`, set only by direct
   database access. No function writes the role, and a test pins that.
-- **Hidden posts** keep their text for the author and the moderators. The author
-  sees the reason (DSA Art. 17), and other members see only that the post was
-  removed.
+- **Hidden posts** keep their text for the author and the moderators, and the
+  author sees the reason (DSA Art. 17). For every other member a hidden post is
+  gone: left out of the thread, its counts and its times.
 - **The page** renders everything a member wrote as text (`textContent`), loads
   no outside script, and makes no request while `config.js` is empty.
 

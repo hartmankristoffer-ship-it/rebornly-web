@@ -97,6 +97,25 @@ forum goes live when you merge it.
 
 The moderator role is only ever granted like this, by direct database access.
 
+## 7b. Go-live check (10 minutes, before inviting anyone else)
+
+Tick each one. If one fails, stop and tell Claude.
+
+1. **Uninvited address:** in a private window, ask for a code for an address
+   you have not invited. No email arrives.
+2. **Invited member:** invite a second address of your own (Moderation →
+   Invite), sign in with it in a private window and join.
+3. **Announcements are team-only:** as that member, open Announcements. There
+   is no *Start a thread* button.
+4. **No moderation for members:** as that member, go to
+   `https://rebornlyapp.com/forum/#/mod`. It says *Not found*.
+5. **Hidden means gone:** as yourself, hide one of the member's replies with a
+   reason. The member sees it with your reason. Invite a second test address,
+   join with it in another private window: there the reply is not there at all.
+6. **Sign out and back in** as the member: a new code arrives and works.
+7. **Clean up:** run `select forum.erase_member('<test address>');` for each
+   test address.
+
 ## 8. Everyday use
 
 - **Invite:** Moderation → *Invite an email address*. This only lets the address
@@ -114,8 +133,11 @@ In the SQL Editor:
   `select forum.export_member('<their address>');`
 - Delete them (erasure):
   `select forum.erase_member('<their address>');`
-  This wipes their posts, thread titles and reports, and deletes their sign-in
-  account. Replies by others stay.
+  This wipes their posts and thread titles, deletes the reports they made and
+  those about their posts, removes their address, id and your reasons about
+  them from the moderation log, deletes Supabase Auth's sign-in log entries
+  that name them, and deletes their sign-in account (with its sessions).
+  Replies by others stay; a reply of theirs you had hidden stays hidden.
 - Never delete a member from the Authentication → Users page instead: that
   removes the account but leaves the texts they wrote.
 

@@ -257,6 +257,21 @@ language sql stable set search_path = '' as $$
   select t.hidden_at is null or t.author_id = m.user_id or m.role = 'moderator'
 $$;
 
+-- A post a moderator hid is gone for everyone but its author and the
+-- moderators: it is left out of threads, counts and times, not shown as a
+-- placeholder.
+create function forum.post_visible(p forum.posts, m forum.members) returns boolean
+language sql stable set search_path = '' as $$
+  select p.hidden_at is null or p.author_id = m.user_id or m.role = 'moderator'
+$$;
+
+-- When the last post the given member may see was written.
+create function forum.last_visible_at(t forum.threads, m forum.members) returns timestamptz
+language sql stable set search_path = '' as $$
+  select coalesce(max(p.created_at), t.created_at)
+  from forum.posts p where p.thread_id = t.id and forum.post_visible(p, m)
+$$;
+
 create function forum.author_json(p_author uuid) returns jsonb
 language sql stable set search_path = '' as $$
   select case
@@ -356,17 +371,69 @@ begin
 end;
 $$;
 
+-- The ids (as text, the form moderation_log.target uses) of everything that is
+-- about one person: their address, their account, their threads and posts,
+-- the reports they made and the reports made about their posts.
+create function forum.targets_about(p_email text, p_uid uuid) returns text[]
+language sql stable set search_path = '' as $$
+  select array_remove(
+    array[p_email, p_uid::text]
+    || coalesce((select array_agg(t.id::text) from forum.threads t where t.author_id = p_uid), '{}')
+    || coalesce((select array_agg(p.id::text) from forum.posts p where p.author_id = p_uid), '{}')
+    || coalesce((select array_agg(r.id::text) from forum.reports r
+                 where r.reporter_id = p_uid
+                    or r.post_id in (select p.id from forum.posts p where p.author_id = p_uid)), '{}'),
+    null)
+$$;
+
+-- Supabase Auth's own sign-in log (auth.audit_log_entries) names a user by id
+-- and address inside a JSON payload. Matching the quoted value means one
+-- address never matches inside a longer one ("ann@x.se" in "joann@x.se").
+create function forum.auth_log_mentions(p_payload text, p_email text, p_uid uuid) returns boolean
+language sql immutable set search_path = '' as $$
+  select position('"' || p_email || '"' in lower(p_payload)) > 0
+      or (p_uid is not null and position('"' || p_uid::text || '"' in lower(p_payload)) > 0)
+$$;
+
 -- For access requests (GDPR Art. 15 and 20), run by the owner in the SQL
--- editor: everything the forum holds about one address. No client can call it.
+-- editor: everything the forum project holds about one address, including
+-- what Supabase Auth keeps about the sign-ins. No client can call it.
 create function forum.export_member(p_email text) returns jsonb
 language plpgsql stable set search_path = '' as $$
 declare
-  v_email text := lower(btrim(coalesce(p_email, '')));
+  v_email text := forum.clean_email(p_email);
   v_uid uuid;
+  v_targets text[];
+  v_account jsonb;
+  v_sessions jsonb := '[]'::jsonb;
+  v_sign_ins jsonb := '[]'::jsonb;
 begin
-  select u.id into v_uid from auth.users u where lower(u.email) = v_email;
+  select u.id, to_jsonb(u) into v_uid, v_account from auth.users u where lower(u.email) = v_email;
+  v_targets := forum.targets_about(v_email, v_uid);
+  -- Only the account fields that describe the person, whatever else the Auth
+  -- schema version carries.
+  v_account := (select jsonb_object_agg(k, v_account -> k)
+                from unnest(array['id', 'email', 'created_at', 'email_confirmed_at',
+                                  'confirmed_at', 'last_sign_in_at']) k
+                where v_account ? k);
+  if v_uid is not null and to_regclass('auth.sessions') is not null then
+    execute 'select coalesce(jsonb_agg(jsonb_build_object(''created_at'', s.created_at,
+               ''updated_at'', s.updated_at, ''ip'', s.ip, ''user_agent'', s.user_agent)
+               order by s.created_at), ''[]''::jsonb)
+             from auth.sessions s where s.user_id = $1'
+      into v_sessions using v_uid;
+  end if;
+  if to_regclass('auth.audit_log_entries') is not null then
+    execute 'select coalesce(jsonb_agg(to_jsonb(a) - ''instance_id'' order by a.created_at), ''[]''::jsonb)
+             from auth.audit_log_entries a
+             where forum.auth_log_mentions(a.payload::text, $1, $2)'
+      into v_sign_ins using v_email, v_uid;
+  end if;
   return jsonb_build_object(
     'email', v_email,
+    'account', v_account,
+    'sessions', v_sessions,
+    'sign_in_log', v_sign_ins,
     'invitation', (select to_jsonb(i) - 'invited_by' from forum.invitations i where i.email = v_email),
     'member', (select to_jsonb(m) from forum.members m where m.user_id = v_uid),
     'threads', coalesce((select jsonb_agg(jsonb_build_object('id', t.id, 'title', t.title,
@@ -379,33 +446,85 @@ begin
                        from forum.posts p where p.author_id = v_uid), '[]'::jsonb),
     'reports_made', coalesce((select jsonb_agg(jsonb_build_object('post_id', r.post_id, 'reason', r.reason,
                                       'created_at', r.created_at, 'resolution', r.resolution) order by r.created_at)
-                              from forum.reports r where r.reporter_id = v_uid), '[]'::jsonb));
+                              from forum.reports r where r.reporter_id = v_uid), '[]'::jsonb),
+    -- Reports others made about this person's posts, without saying who made them.
+    'reports_about_posts', coalesce((select jsonb_agg(jsonb_build_object('post_id', r.post_id, 'reason', r.reason,
+                                             'created_at', r.created_at, 'resolution', r.resolution) order by r.created_at)
+                                     from forum.reports r join forum.posts p on p.id = r.post_id
+                                     where p.author_id = v_uid), '[]'::jsonb),
+    -- Moderator actions about this person or their content, and any they took.
+    'moderation', coalesce((select jsonb_agg(jsonb_build_object('action', l.action, 'target', l.target,
+                                    'reason', l.reason, 'created_at', l.created_at,
+                                    'by_this_person', l.moderator_id = v_uid) order by l.id)
+                            from forum.moderation_log l
+                            where l.target = any(v_targets) or l.moderator_id = v_uid), '[]'::jsonb));
 end;
 $$;
 
--- For erasure requests (GDPR Art. 17), run by the owner in the SQL editor:
--- the member's posts, thread titles and reports are wiped, then the sign-in
--- account is deleted, which removes the membership. Replies by others stay.
+-- For erasure requests (GDPR Art. 17), run by the owner in the SQL editor.
+-- Wipes the member's texts and the moderators' reasons about them, removes
+-- their address and id from the moderation log, deletes the reports they
+-- made or that concern their posts, deletes Supabase Auth's sign-in log
+-- entries that name them, and finally deletes the sign-in account (which
+-- takes the membership, sessions and tokens with it). Replies by others stay.
 create function forum.erase_member(p_email text) returns jsonb
 language plpgsql set search_path = '' as $$
 declare
-  v_email text := lower(btrim(coalesce(p_email, '')));
+  v_email text := forum.clean_email(p_email);
   v_uid uuid;
-  v_posts integer;
+  v_targets text[];
+  v_posts integer := 0;
+  v_log integer := 0;
 begin
   select u.id into v_uid from auth.users u where lower(u.email) = v_email;
+  -- Collected before anything is wiped or deleted.
+  v_targets := forum.targets_about(v_email, v_uid);
+
+  select count(*) into v_log from forum.moderation_log
+   where target = any(v_targets) or moderator_id = v_uid;
+
+  update forum.moderation_log set target = 'erased', reason = null
+   where target in (v_email, v_uid::text);
+  update forum.moderation_log set reason = null
+   where target = any(v_targets) and reason is not null;
+  update forum.moderation_log set moderator_id = null where moderator_id = v_uid;
+
   delete from forum.invitations where email = v_email;
+  update forum.invitations set invited_by = null where invited_by = v_uid;
+
+  if to_regclass('auth.audit_log_entries') is not null then
+    execute 'delete from auth.audit_log_entries a where forum.auth_log_mentions(a.payload::text, $1, $2)'
+      using v_email, v_uid;
+  end if;
+
   if v_uid is null then
     return jsonb_build_object('email', v_email, 'account', false);
   end if;
-  update forum.threads t set title = '', deleted_at = coalesce(t.deleted_at, now())
-   where t.author_id = v_uid;
-  update forum.posts p set body = '', deleted_at = coalesce(p.deleted_at, now())
-   where p.author_id = v_uid and p.deleted_at is null;
-  get diagnostics v_posts = row_count;
-  delete from forum.reports where reporter_id = v_uid;
+
+  select count(*) into v_posts from forum.posts where author_id = v_uid and deleted_at is null;
+  delete from forum.reports
+   where reporter_id = v_uid
+      or post_id in (select id from forum.posts where author_id = v_uid);
+  update forum.threads
+     set title = '', deleted_at = coalesce(deleted_at, now()),
+         hidden_reason = case when hidden_at is not null then 'Erased on request' end,
+         hidden_by = null
+   where author_id = v_uid;
+  -- A post a moderator hid stays hidden (others never see it), but the
+  -- moderator's words about it go.
+  update forum.posts
+     set body = '', deleted_at = coalesce(deleted_at, now()),
+         hidden_reason = case when hidden_at is not null then 'Erased on request' end,
+         hidden_by = null
+   where author_id = v_uid;
+  -- If the person was a moderator, their id leaves the records they touched.
+  update forum.threads set hidden_by = null where hidden_by = v_uid;
+  update forum.posts set hidden_by = null where hidden_by = v_uid;
+  update forum.reports set resolved_by = null where resolved_by = v_uid;
+
   delete from auth.users where id = v_uid;
-  return jsonb_build_object('email', v_email, 'account', true, 'posts_wiped', v_posts);
+  return jsonb_build_object('email', v_email, 'account', true,
+                            'posts_wiped', v_posts, 'log_rows_cleared', v_log);
 end;
 $$;
 
@@ -493,7 +612,7 @@ begin
              'team_only', c.team_only,
              'thread_count', (select count(*) from forum.threads t
                               where t.category_id = c.id and forum.thread_visible(t, m)),
-             'last_post_at', (select max(t.last_post_at) from forum.threads t
+             'last_post_at', (select max(forum.last_visible_at(t, m)) from forum.threads t
                               where t.category_id = c.id and forum.thread_visible(t, m)))
            order by c.position)
     from forum.categories c), '[]'::jsonb);
@@ -519,24 +638,28 @@ begin
     'total', (select count(*) from forum.threads t
               where t.category_id = c.id and forum.thread_visible(t, m)),
     'threads', coalesce((
-      select jsonb_agg(row_json order by pinned desc, last_post_at desc, id)
+      select jsonb_agg(row_json order by pinned desc, last_at desc, id)
       from (
-        select t.pinned, t.last_post_at, t.id,
+        select t.pinned, v.last_at, t.id,
                jsonb_build_object(
                  'id', t.id,
                  'title', nullif(t.title, ''),
                  'author', forum.author_json(t.author_id),
                  'created_at', t.created_at,
-                 'last_post_at', t.last_post_at,
-                 'replies', (select count(*) from forum.posts p
-                             where p.thread_id = t.id and not p.is_opening),
+                 'last_post_at', v.last_at,
+                 'replies', v.replies,
                  'pinned', t.pinned,
                  'locked', t.locked,
                  'deleted', t.deleted_at is not null,
                  'hidden', t.hidden_at is not null) as row_json
         from forum.threads t
+        cross join lateral (
+          select forum.last_visible_at(t, m) as last_at,
+                 (select count(*) from forum.posts p
+                  where p.thread_id = t.id and not p.is_opening and forum.post_visible(p, m)) as replies
+        ) v
         where t.category_id = c.id and forum.thread_visible(t, m)
-        order by t.pinned desc, t.last_post_at desc, t.id
+        order by t.pinned desc, v.last_at desc, t.id
         limit v_limit offset v_offset
       ) page), '[]'::jsonb));
 end;
@@ -570,12 +693,13 @@ begin
       'hidden_reason', case when t.author_id = m.user_id or m.role = 'moderator'
                             then t.hidden_reason end,
       'can_reply', (not t.locked and t.hidden_at is null) or m.role = 'moderator'),
-    'total', (select count(*) from forum.posts p where p.thread_id = t.id),
+    'total', (select count(*) from forum.posts p
+              where p.thread_id = t.id and forum.post_visible(p, m)),
     'posts', coalesce((
       select jsonb_agg(forum.post_json(p, m) order by p.seq)
-      from (select * from forum.posts
-            where thread_id = t.id
-            order by seq
+      from (select * from forum.posts p2
+            where p2.thread_id = t.id and forum.post_visible(p2, m)
+            order by p2.seq
             limit v_limit offset v_offset) p), '[]'::jsonb));
 end;
 $$;
@@ -699,7 +823,7 @@ begin
     perform forum.fail('not_found');
   end if;
   select * into t from forum.threads where id = p.thread_id;
-  if not forum.thread_visible(t, m) or p.deleted_at is not null then
+  if not forum.thread_visible(t, m) or not forum.post_visible(p, m) or p.deleted_at is not null then
     perform forum.fail('not_found');
   end if;
   if p.author_id = m.user_id then
@@ -719,7 +843,8 @@ $$;
 -- ---------------------------------------------------------------------------
 
 -- Hiding keeps the text for its author and the moderators and shows the
--- author the reason (DSA Art. 17). Hiding the opening post hides the thread.
+-- author the reason (DSA Art. 17); every other member no longer sees the post
+-- at all. Hiding the opening post hides the thread.
 create function public.forum_mod_hide_post(p_post_id uuid, p_reason text) returns void
 language plpgsql security definer set search_path = '' as $$
 declare
