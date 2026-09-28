@@ -4,9 +4,10 @@
 #          supabase/tests run with pgTAP, plus the read-only and race probes.
 #   site:  no legal page ships an unfilled date, the three pages share one
 #          version, and the forum's address and its CSP agree.
-#   page:  the forum page in a real Chrome against a stub: the sign-in code
-#          step survives tabs, visibility, focus, freezing and a reload, and
-#          nothing is stored in the browser before sign-in.
+#   page:  the forum page in a real Chrome against a stub of Supabase Auth:
+#          the sign-in code step survives tabs, visibility, focus, freezing
+#          and a reload; an uninvited address gets the same answer; the
+#          wordmark stays in the forum; nothing is stored before sign-in.
 name: Forum tests
 
 on:

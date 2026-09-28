@@ -71,6 +71,7 @@
   };
   MESSAGES.code_wait = 'Please wait a minute before asking for another code.';
   MESSAGES.bad_code = 'That code is wrong or has expired. Go back and ask for a new one.';
+  MESSAGES.bad_code_or_address = 'That address and code do not match, or the code has expired. Check both, or ask for a new code.';
   const message = (code) => MESSAGES[code] || MESSAGES.unavailable;
 
   // ---------------------------------------------------------------------------
@@ -226,9 +227,10 @@
 
   let me = null;
   let seq = 0;
-  // The address a code was just asked for. Kept in memory only, never stored
-  // (Cookie Policy 2a: nothing is stored until you sign in), so after the
-  // browser reloads the tab the member types it again with the code.
+  // { address, sent }: the address a code was asked for on this page (sent),
+  // or one typed before "I already have a code" (not sent). Kept in memory
+  // only, never stored (Cookie Policy 2a: nothing is stored until you sign
+  // in), so after the browser reloads the tab the member types it again.
   let pending = null;
   const visit = (hash) => { if (location.hash === hash) route(); else location.hash = hash; };
   const current = (n) => n === seq;
@@ -340,7 +342,7 @@
         const result = await auth('otp', { email: address, create_user: true });
         // An address without an invitation is refused by the server; the page
         // answers the same either way, so it does not reveal who is invited.
-        if (result.ok || result.status === 403) { pending = address; return visit('#/code'); }
+        if (result.ok || result.status === 403) { pending = { address, sent: true }; return visit('#/code'); }
         if (result.status === 429) throw new ForumError('code_wait');
         throw new ForumError('unavailable');
       });
@@ -350,7 +352,7 @@
       h('div', { class: 'buttons' }, send,
         h('a', { href: '#/code', on: { click: () => {
           const address = email.value.trim().toLowerCase();
-          pending = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(address) ? address : null;
+          pending = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(address) ? { address, sent: false } : null;
         } } }, 'I already have a code')),
       status);
     show(h('h1', {}, 'Beta forum'),
@@ -361,18 +363,20 @@
         h('a', { href: '/cookies/' }, 'Cookie policy'), ' · ', h('a', { href: '/privacy/' }, 'Privacy policy')));
   }
 
-  // The code step (#/code). The address is known when the code was asked for
-  // on this page; after a reload it is not, and the member types it here.
-  function showCode(address) {
+  // The code step (#/code). Right after a code was asked for on this page the
+  // address is known and shown. Otherwise (after a reload, or "I already have
+  // a code") the member types it here, prefilled when they had typed it.
+  function showCode(p) {
+    const sent = !!(p && p.sent);
     const status = statusLine();
-    const email = address ? null : h('input', { id: 'code-email', type: 'email', autocomplete: 'email',
-      maxlength: '254', required: true });
+    const email = sent ? null : h('input', { id: 'code-email', type: 'email', autocomplete: 'email',
+      maxlength: '254', required: true, value: p ? p.address : null });
     const code = h('input', { id: 'code', class: 'code', type: 'text', inputmode: 'numeric',
       autocomplete: 'one-time-code', maxlength: '10', required: true });
     const go = h('button', { class: 'button', type: 'submit' }, 'Sign in');
     const form = h('form', { class: 'form', novalidate: true, on: { submit: async (event) => {
       event.preventDefault();
-      const target = address || email.value.trim().toLowerCase();
+      const target = sent ? p.address : email.value.trim().toLowerCase();
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(target)) return say(status, message('invalid_email'), true);
       const token = code.value.replace(/\s+/g, '');
       if (!/^[0-9]{6,10}$/.test(token)) return say(status, 'Please type the code from the email.', true);
@@ -385,7 +389,7 @@
           return route();
         }
         if (result.status === 429) throw new ForumError('code_wait');
-        throw new ForumError('bad_code');
+        throw new ForumError(sent ? 'bad_code' : 'bad_code_or_address');
       });
     } } },
       email ? [h('label', { for: 'code-email' }, 'Email address'), email] : null,
@@ -393,11 +397,11 @@
       code,
       h('div', { class: 'buttons' }, go,
         h('button', { type: 'button', class: 'link', on: { click: () => { pending = null; visit('#/'); } } },
-          address ? 'Use another address' : 'Ask for a new code')),
+          sent ? 'Use another address' : 'Ask for a new code')),
       status);
     show(h('h1', {}, 'Check your email'),
-      address
-        ? h('p', {}, 'If ', h('strong', {}, address), ' has been invited, a code is on its way to it. ' +
+      sent
+        ? h('p', {}, 'If ', h('strong', {}, p.address), ' has been invited, a code is on its way to it. ' +
             'It works for 10 minutes. Look in your spam folder too.')
         : h('p', {}, 'Type the email address you asked for a code with, and the code from the email. ' +
             'A code works for 10 minutes. Look in your spam folder too.'),
