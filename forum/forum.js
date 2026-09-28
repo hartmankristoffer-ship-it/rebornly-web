@@ -75,8 +75,7 @@
   const message = (code) => MESSAGES[code] || MESSAGES.unavailable;
 
   // ---------------------------------------------------------------------------
-  // Building the page. Text is always text: h() never parses HTML, and user
-  // data never goes into an attribute that could run or load anything.
+  // Building the page
   // ---------------------------------------------------------------------------
 
   const PROPS = new Set(['value', 'checked', 'disabled', 'hidden', 'required']);
