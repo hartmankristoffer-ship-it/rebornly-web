@@ -13,7 +13,7 @@ app.
 | Project address (off while empty) | `forum/config.js` |
 | Schema, functions, Auth hook | `supabase/migrations/20260927000100_web02_beta_forum.sql` |
 | Sign-in code email | `supabase/templates/sign-in-code.html` |
-| Tests | `supabase/tests/forum.test.sql`, run by `scripts/test-forum.sh` and CI (`.github/workflows/forum-tests.yml`) |
+| Tests | `supabase/tests/forum.test.sql`, run by `scripts/test-forum.sh`; the page itself in Chrome, `scripts/test-forum-page.mjs`; both in CI (`.github/workflows/forum-tests.yml`) |
 | Local development stack | `supabase/config.toml`, `supabase/seed.sql` |
 | Owner setup and daily use | `docs/forum/RUNBOOK.md` |
 | The website texts, version 1.1 | `docs/forum/LEGAL_TEXT_CHANGES.md` |
