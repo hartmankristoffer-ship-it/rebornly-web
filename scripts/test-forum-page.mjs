@@ -146,14 +146,14 @@ const { sessionId } = await cdp('Target.attachToTarget', { targetId, flatten: tr
 const page = (method, params) => cdp(method, params, sessionId);
 await page('Page.enable');
 await page('Runtime.enable');
-const js = async (expression) => {
-  const r = await page('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });
+const js = async (expression, sid = sessionId) => {
+  const r = await cdp('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true }, sid);
   if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || 'evaluation failed');
   return r.result.value;
 };
-async function until(expression, ms = 8000) {
+async function until(expression, ms = 8000, sid = sessionId) {
   for (let waited = 0; waited < ms; waited += 100) {
-    try { if (await js(expression)) return true; } catch { /* navigating */ }
+    try { if (await js(expression, sid)) return true; } catch { /* navigating */ }
     await sleep(100);
   }
   return false;
@@ -163,8 +163,11 @@ async function until(expression, ms = 8000) {
 const signInStep = `document.querySelector('#app h1')?.textContent === 'Beta forum' && !!document.getElementById('email')`;
 const codeStep = `document.querySelector('#app h1')?.textContent === 'Check your email' && !!document.getElementById('code')`;
 const joinStep = `document.querySelector('#app h1')?.textContent === 'Welcome to the beta forum'`;
-const view = () => js(`(async () => ({
+const view = (sid = sessionId) => js(`(async () => ({
   h1: document.querySelector('#app h1')?.textContent || '',
+  url: location.href,
+  appText: document.getElementById('app').innerText,
+  appHTML: document.getElementById('app').innerHTML,
   path: location.pathname,
   hash: location.hash,
   text: document.querySelector('#app h1 + p')?.textContent || '',
@@ -179,21 +182,22 @@ const view = () => js(`(async () => ({
   windowName: window.name,
   indexedDB: (await indexedDB.databases()).map((d) => d.name),
   caches: typeof caches === 'undefined' ? [] : await caches.keys(),
-}))()`);
+}))()`, sid);
 // Cookie Policy 2a: before sign-in nothing at all; after it, only the session.
 async function stored() {
   const v = await view();
   const { cookies } = await cdp('Storage.getCookies');
-  return { keys: v.keys, cookie: v.cookie, cookies: cookies.length, historyState: v.historyState,
+  return { url: v.url, keys: v.keys, cookie: v.cookie, cookies: cookies.length, historyState: v.historyState,
     windowName: v.windowName, indexedDB: v.indexedDB, caches: v.caches };
 }
-const nothingStored = (s) => s.keys.length === 0 && s.cookie === '' && s.cookies === 0 && s.historyState === null
-  && s.windowName === '' && s.indexedDB.length === 0 && s.caches.length === 0;
-async function type(selector, text) {
-  await js(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); el.focus(); el.select?.(); })()`);
-  await page('Input.insertText', { text });
+// ... and never an address in the URL (so none in the history either).
+const nothingStored = (s) => !decodeURIComponent(s.url).includes('@') && s.keys.length === 0 && s.cookie === ''
+  && s.cookies === 0 && s.historyState === null && s.windowName === '' && s.indexedDB.length === 0 && s.caches.length === 0;
+async function type(selector, text, sid = sessionId) {
+  await js(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); el.focus(); el.select?.(); })()`, sid);
+  await cdp('Input.insertText', { text }, sid);
 }
-const click = (expression) => js(`(${expression}).click()`);
+const click = (expression, sid = sessionId) => js(`(${expression}).click()`, sid);
 const control = (label) => `[...document.querySelectorAll('#app button, #app a, #bar button')].find((b) => b.textContent.trim() === ${JSON.stringify(label)})`;
 const submit = `document.querySelector('#app form button[type=submit]')`;
 const otpCalls = () => calls.filter((c) => c.path === '/auth/v1/otp');
@@ -214,7 +218,7 @@ try {
   await click(submit);
   if (!check('asking for a code shows the code step', await until(codeStep), await view())) throw 0;
   let v = await view();
-  const memberText = v.text;
+  const memberView = v;
   check('the code step has an address of its own, #/code', v.hash === '#/code', v);
   check('it names the address, lower-cased, and says a code is on its way',
     v.address === MEMBER && v.text.includes('a code is on its way') && !v.emailField, v);
@@ -276,7 +280,10 @@ try {
     nothingStored({ ...signedIn, keys: signedIn.keys.filter((k) => k !== 'local:rebornly.forum.session') })
     && signedIn.keys.includes('local:rebornly.forum.session'), signedIn);
 
-  // 6. A signed-in member who opens #/code goes on to the forum.
+  // 6. A signed-in member who opens #/code goes on to the forum (from another
+  //    view, so only the re-route can bring the forum's start back).
+  await js(`location.hash = '#/rules'`);
+  await until(`document.querySelector('#app h1')?.textContent === 'Forum rules'`);
   await js(`location.hash = '#/code'`);
   check('a signed-in member at #/code is taken to #/', await until(`location.hash === '#/' && ${joinStep}`), await view());
 
@@ -295,8 +302,11 @@ try {
   await click(submit);
   check('an uninvited address also reaches the code step', await until(codeStep), await view());
   v = await view();
-  check('its code step reads exactly as for an invited address', v.hash === '#/code' && v.address === STRANGER
-    && v.status === '' && v.text.replace(STRANGER, 'X') === memberText.replace(MEMBER, 'X'), { v, memberText });
+  check('its code step reads exactly as for an invited address, text and markup', v.hash === '#/code'
+    && v.address === STRANGER && v.status === ''
+    && v.appText.replaceAll(STRANGER, 'X') === memberView.appText.replaceAll(MEMBER, 'X')
+    && v.appHTML.replaceAll(STRANGER, 'X') === memberView.appHTML.replaceAll(MEMBER, 'X'),
+    { stranger: v.appText, member: memberView.appText });
   check('the server was asked for its code, and refused it', otpCalls().at(-1).body.email === STRANGER, calls);
   check('it stores nothing in the browser either', nothingStored(await stored()), await stored());
   await click(control('Use another address'));
@@ -329,6 +339,28 @@ try {
   await until(`document.querySelector('#app .status')?.textContent.includes('wrong')`);
   v = await view();
   check('a wrong code says so and stays on the code step', v.h1 === 'Check your email' && /wrong or has expired/.test(v.status), v);
+
+  // 11. Signing in from another tab is the end of the address asked about
+  //     here: after signing out, Back to the code step names nobody.
+  await click(`document.querySelector('.site-header a')`);
+  await until(`${signInStep} && location.hash === '#/'`);
+  const second = await cdp('Target.createTarget', { url: origin + '/forum/#/code' });
+  const { sessionId: tab2 } = await cdp('Target.attachToTarget', { targetId: second.targetId, flatten: true });
+  await cdp('Runtime.enable', {}, tab2);
+  await until(codeStep, 8000, tab2);
+  await type('#code-email', MEMBER, tab2);
+  await type('#code', CODE, tab2);
+  await click(submit, tab2);
+  check('the other tab signs in', await until(joinStep, 8000, tab2), await view(tab2));
+  check('this tab follows it in', await until(joinStep), await view());
+  await click(control('Sign out'));
+  await until(signInStep);
+  await js('history.back()');
+  await until(codeStep);
+  v = await view();
+  check('after signing out, Back to the code step names no address and says no code is on its way',
+    v.hash === '#/code' && v.address === '' && v.emailField && v.emailValue === '' && !v.text.includes('on its way'), v);
+  await cdp('Target.closeTarget', { targetId: second.targetId });
 } catch (error) {
   if (error !== 0) check('the test ran to the end', false, String(error && error.stack || error));
 }

@@ -243,6 +243,8 @@
     if (parts[0] === 'rules') return showRules();
     if (parts[0] === 'notice') return showNotice();
     if (!BASE || !KEY) { bar.hidden = true; return showOff(); }
+    // Signed in (here or in another tab): the address asked about is done with.
+    if (session) pending = null;
     // The code step has an address of its own, so it survives the browser
     // reloading or discarding the tab while the member reads the email.
     if (parts[0] === 'code' && parts.length === 1) {
