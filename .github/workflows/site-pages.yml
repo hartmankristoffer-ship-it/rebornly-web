@@ -1,0 +1,33 @@
+# DOLL-ID-01: the 404 page that answers a Doll ID link, and the /.well-known
+# association files. This repository is public, so the runs cost nothing.
+#   pages: 404.html and /.well-known in a real Chrome, behind a stub of GitHub
+#          Pages: a right Doll ID shows only the Doll view, anything else
+#          "Page not found"; no request, nothing stored, the CSP hash is
+#          right; both association files grant nothing.
+name: Site pages
+
+on:
+  pull_request:
+    paths:
+      - '404.html'
+      - '.well-known/**'
+      - '.nojekyll'
+      - '.gitattributes'
+      - 'scripts/test-site-pages.mjs'
+      - '.github/workflows/site-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Drive the 404 page and the association files in Chrome
+        run: node scripts/test-site-pages.mjs

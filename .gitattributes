@@ -2,3 +2,6 @@
 *.sql text eol=lf
 *.toml text eol=lf
 *.yml text eol=lf
+*.json text eol=lf
+.well-known/apple-app-site-association text eol=lf
+404.html text eol=lf
