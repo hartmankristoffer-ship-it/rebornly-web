@@ -115,7 +115,7 @@ In the owner's order (29 September 2026):
 4. **Store links replace "Rebornly is coming soon"** once the app is in the
    stores. Changing only the markup does not change the script hash.
 
-**The app claims only `/d/` (owner decision, 30 September 2026, option A).**
+**The app claims only `/d/` (owner decision, 30 September 2026, on app issue #132: https://github.com/hartmankristoffer-ship-it/Rebornly/issues/132#issuecomment-5913052462).**
 Android verifies a whole host, not a path: once `assetlinks.json` verifies,
 every path the app claims on this domain opens the app. The auth email flows
 are not built or tested for opening in the app (a password reset started on
