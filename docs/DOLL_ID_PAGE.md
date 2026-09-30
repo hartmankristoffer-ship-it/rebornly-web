@@ -108,27 +108,27 @@ In the owner's order (29 September 2026):
    membership exists, the AASA is the app repo's
    `apple-app-site-association.template.json` with the Team ID in place of
    `<APPLE_TEAM_ID>`: one `details` entry whose `appIDs` is
-   `<TEAMID>.com.rebornlyapp.rebornly`, with the template's components, which
-   claim `/r/*` and `/d/*`. The app needs nothing else: it already has the
-   Associated Domains entitlement `applinks:rebornlyapp.com`, and iOS takes the
-   paths from this file.
+   `<TEAMID>.com.rebornlyapp.rebornly`, with the template's one component,
+   `"/": "/d/*"`, so it claims `/d/*` only. The app needs nothing else: it
+   already has the Associated Domains entitlement `applinks:rebornlyapp.com`,
+   and iOS takes the paths from this file.
 4. **Store links replace "Rebornly is coming soon"** once the app is in the
    stores. Changing only the markup does not change the script hash.
 
-**Before 1 and 3, the owner decides whether `/r/` stays an app link.** Android
-verifies a whole host, not a path. Once `assetlinks.json` verifies, the app's
-existing verified link filter for `/r/` also takes over the email links
-`/r/AUTH-03` (email verified) and `/r/AUTH-06` (new password). Those links
-would open in the app instead of on these pages, which changes the live
-sign-in email flow. One of two things must be decided first:
+**The app claims only `/d/` (owner decision, 30 September 2026, option A).**
+Android verifies a whole host, not a path: once `assetlinks.json` verifies,
+every path the app claims on this domain opens the app. The auth email flows
+are not built or tested for opening in the app (a password reset started on
+the web cannot finish in the app), so the app claims only the Doll ID path, on
+both platforms: its Android link filter covers `/d/` only, and the app repo's
+AASA template has only `"/": "/d/*"`. `/r/` is not an app link. The auth
+email links keep opening this website, as they do today: `/r/AUTH-03` ("Email
+verified") and `/r/AUTH-06` ("Set a new password") stay pages on this site.
+In the app repo this reverses GATE-01's (26 August 2026) `/r/` app-link claim;
+GATE-01 stays closed and carries a dated note.
 
-- keep `/r/` in the app, and prove AUTH-03 and AUTH-06 work in the app; the
-  AASA then claims the template's `/r/*` and `/d/*`; or
-- narrow the Android filter to `/d/`; the app repo's AASA template then drops
-  `/r/*`, so both platforms claim `/d/` only.
-
-Either way both platforms claim the same paths, and the app repo's template
-changes first; this file follows it. When real values go in,
+Both platforms claim the same paths, and the app repo's template changes
+first; this file follows it. When real values go in,
 `scripts/test-site-pages.mjs` changes with them: it pins exactly the empty
 files today, and will pin the decided statements then.
 
