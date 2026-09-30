@@ -5,7 +5,7 @@
   <title>Page not found — Rebornly</title>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; script-src 'sha256-JKdMDodNEsy2d+uS/3RMJ5TyOrAqIU2iAv9PvyqwGhA='; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; script-src 'sha256-Mi2PR4g9s8FkLWsSsMhxegqS+FY9Iv6XkXBQoBqii2E='; base-uri 'none'; form-action 'none'">
   <meta name="theme-color" content="#f8f5f0">
   <meta name="robots" content="noindex">
   <link rel="icon" type="image/png" href="/assets/branding/favicon2.png">
@@ -85,29 +85,33 @@
   </footer>
   <script>
     // DOLL-ID-01: GitHub Pages answers every unknown path with this page, and a
-    // printed QR code opens https://rebornlyapp.com/d/RB-XXXXXX. Only a Doll ID
-    // in exactly that form whose check character is right turns the page into
-    // the Doll view; anything else stays "Page not found", which is also all a
-    // visitor sees without JavaScript. The page asks nothing of any server and
-    // stores nothing, so it cannot tell whether the Doll exists or who may see
-    // it: every ID with a right check character reads the same. Changing this
-    // script means updating its sha256 in the Content-Security-Policy above
-    // (scripts/test-site-pages.mjs prints the right one).
+    // printed QR code opens https://rebornlyapp.com/d/RB-XXXXX-XXXXX. Only a
+    // Doll ID in exactly that form whose check character is right turns the
+    // page into the Doll view; anything else stays "Page not found", which is
+    // also all a visitor sees without JavaScript. The page asks nothing of any
+    // server and stores nothing, so it cannot tell whether the Doll exists or
+    // who may see it: every ID with a right check character reads the same.
+    // Changing this script means updating its sha256 in the
+    // Content-Security-Policy above (scripts/test-site-pages.mjs prints the
+    // right one).
     (() => {
-      const match = /^\/d\/(?:RB|rb|Rb|rB)-([0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{6})\/?$/.exec(location.pathname);
+      const match = /^\/d\/(?:RB|rb|Rb|rB)-([0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{5})-([0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{5})\/?$/.exec(location.pathname);
       if (!match) return;
       const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
-      const chars = match[1].toUpperCase();
-      // Luhn mod 32, the same rule as the app and the database: from the right
+      const first = match[1].toUpperCase();
+      const second = match[2].toUpperCase();
+      // Luhn mod 32 over all ten characters (nine random ones, then the check
+      // character), the same rule as the app and the database: from the right
       // the weights are 1, 2, 1, 2 ...; a weighted value adds its two base-32
       // digits; the ID is right when the sum is a multiple of 32.
+      const chars = first + second;
       let sum = 0;
       for (let i = chars.length - 1, weight = 1; i >= 0; i--, weight = 3 - weight) {
         const value = weight * ALPHABET.indexOf(chars[i]);
         sum += Math.floor(value / 32) + value % 32;
       }
       if (sum % 32 !== 0) return;
-      document.getElementById('dollId').textContent = 'RB-' + chars;
+      document.getElementById('dollId').textContent = 'RB-' + first + '-' + second;
       document.getElementById('notFound').hidden = true;
       document.getElementById('doll').hidden = false;
       document.title = 'Rebornly';

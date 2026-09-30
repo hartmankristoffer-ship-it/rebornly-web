@@ -1,9 +1,30 @@
 # Doll ID links (DOLL-ID-01, app issue #132)
 
-Every Doll in the app has a permanent public ID, `RB-XXXXXX`, and its QR code
-carries only `https://rebornlyapp.com/d/RB-XXXXXX`. On a phone where the app is
-installed and linked to this domain, the app opens that address. Everywhere
-else it reaches this website, which has no page there.
+Every Doll in the app has a permanent public ID, `RB-XXXXX-XXXXX`, and its QR
+code carries only `https://rebornlyapp.com/d/RB-XXXXX-XXXXX`. On a phone where
+the app is installed and linked to this domain, the app opens that address.
+Everywhere else it reaches this website, which has no page there.
+
+## The ID
+
+- It is `RB-`, five characters, a dash and five more characters: 14 in all,
+  always printed in capitals. The ten characters come from
+  `0123456789ABCDEFGHJKMNPQRSTVWXYZ`, which has no I, L, O or U. The first
+  nine are random and the tenth is the check character.
+- The check character follows Luhn mod 32 over all ten characters; the prefix
+  and the dashes do not count. From the right the weights are 1, 2, 1, 2 …, a
+  weighted value `a` adds `a div 32 + a mod 32`, and the ID is right when the
+  sum is a multiple of 32. The rule catches every single wrong character and
+  every swap of two neighbours except `0` and `Z`.
+- Why ten characters: the Gate 1 review asked for an ID long enough that
+  guessing one is useless, and the owner decided this form on 30 September
+  2026 (issue #132, point 4 of the owner decisions). Nine random characters
+  give 32^9 = 35,184,372,088,832 IDs. Even with a million Dolls registered, a
+  guessed ID with a right check character belongs to a Doll about once in 35
+  million tries. Two groups of five are easier to read aloud and copy than one
+  run of ten.
+- The six-character draft of 28 September was never printed, and this page
+  does not read it: `/d/RB-DVP8B0` is "Page not found".
 
 ## Parts
 
@@ -20,18 +41,22 @@ else it reaches this website, which has no page there.
   404, and the address bar keeps the path. With no JavaScript, and for any path
   that is not a Doll ID, the page is a plain "Page not found".
 - One inline script reads `location.pathname`. Only
-  `^/d/(RB|rb|Rb|rB)-[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{6}/?$` goes further: the
-  six characters are uppercased and the check character is tested with the
-  app's rule (Luhn mod 32 over `0123456789ABCDEFGHJKMNPQRSTVWXYZ`, weights 1,
-  2, 1, … from the right). It is the same rule as the app's `DollCode` and the
-  database's `security.doll_code_is_valid`. The shared test IDs are
-  `RB-DVP8B0`, `RB-HKYRKE`, `RB-RJGTKV`, `RB-DJ9XWC` and `RB-TTX466`.
-- The page is strict. It does not read look-alike letters (O, I, L, U) as
-  digits, because a QR code always carries the printed form. Typing an ID by
-  hand is for the app's search, which is forgiving.
+  `^/d/(RB|rb|Rb|rB)-([0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{5})-([0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{5})/?$`
+  goes further: the ten characters are uppercased and the check character is
+  tested with the rule above. It is the same rule as the app's `DollCode` and
+  the database's `security.doll_code_is_valid`. The shared test IDs are
+  `RB-T9T3A-2K714`, `RB-FWGCW-ASFZN`, `RB-QRNC4-2P59M`, `RB-P4JGP-82YE7` and
+  `RB-6X8C3-MPR4M`; `RB-T9T3A-2K715` is the shared mistyped one.
+- The page is strict: it reads only the printed shape. It does not read
+  look-alike letters (O, I, L, U) as digits, a missing or moved dash, or a
+  space, because a QR code always carries the printed form. Typing an ID by
+  hand is for the app's search, which is forgiving: it ignores spaces, dashes
+  and letter case, and reads O as 0 and I or L as 1. A transfer receipt number
+  such as `RB-TR-000123` is never a Doll ID.
 - When the ID is right, the page shows only "This doll is registered on
-  Rebornly", the ID as printed, and "Rebornly is coming soon". The site header
-  and footer stay, so the legal links are still there. The title is "Rebornly".
+  Rebornly", the ID as printed (`RB-XXXXX-XXXXX`, in capitals), and "Rebornly
+  is coming soon". The site header and footer stay, so the legal links are
+  still there. The title is "Rebornly".
 - The page cannot know whether that Doll exists or who may see it. Every ID
   with a right check character reads the same, including an invented one
   (about 1 in 32 pass the check). This matches the app's rule that a missing
@@ -111,6 +136,6 @@ files today, and will pin the decided statements then.
 
 - `gh api repos/hartmankristoffer-ship-it/rebornly-web/pages --jq .custom_404`
   should read `true`.
-- `https://rebornlyapp.com/d/RB-DVP8B0` should show the Doll view, and
-  `https://rebornlyapp.com/d/RB-DVP8B1` should show "Page not found".
+- `https://rebornlyapp.com/d/RB-T9T3A-2K714` should show the Doll view, and
+  `https://rebornlyapp.com/d/RB-T9T3A-2K715` should show "Page not found".
 - Both `/.well-known/` addresses should answer 200.

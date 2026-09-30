@@ -4,14 +4,17 @@
 //
 //   node scripts/test-site-pages.mjs        (Node 22 or later, and Chrome)
 //
-// A printed QR code opens https://rebornlyapp.com/d/RB-XXXXXX. The site has no
-// page there, so GitHub Pages answers with /404.html, and that page shows the
-// Doll view only for a Doll ID with a right check character. The checks:
+// A printed QR code opens https://rebornlyapp.com/d/RB-XXXXX-XXXXX. The site
+// has no page there, so GitHub Pages answers with /404.html, and that page
+// shows the Doll view only for a Doll ID with a right check character. The
+// checks:
 //   - a right ID, in any letter case and with or without a trailing slash,
 //     shows only "This doll is registered on Rebornly", the ID as printed and
 //     "Rebornly is coming soon";
-//   - a mistyped ID, a look-alike letter, a receipt number, any other path,
-//     and every path without JavaScript, show "Page not found";
+//   - a mistyped ID, swapped neighbours, a look-alike letter, a dash out of
+//     place or missing, the retired six-character draft form, a receipt
+//     number, any other path, and every path without JavaScript, show "Page
+//     not found";
 //   - the page makes no request beyond its document and its own images, and
 //     stores nothing in the browser;
 //   - the page's Content-Security-Policy names the sha256 of its one inline
@@ -36,8 +39,24 @@ function check(name, ok, detail) {
 }
 
 // The Doll IDs every part of Rebornly agrees on (the app's DollCode, the
-// database's security.doll_code_is_valid and this page).
-const VALID = ['RB-DVP8B0', 'RB-HKYRKE', 'RB-RJGTKV', 'RB-DJ9XWC', 'RB-TTX466'];
+// database's security.doll_code_is_valid and this page): nine random
+// characters and a check character, printed as RB-XXXXX-XXXXX.
+const VALID = ['RB-T9T3A-2K714', 'RB-FWGCW-ASFZN', 'RB-QRNC4-2P59M', 'RB-P4JGP-82YE7', 'RB-6X8C3-MPR4M'];
+// The rule written out again, so that each wrong path below is proven wrong
+// for the reason it names: from the right the weights are 1, 2, 1, 2 ...; a
+// weighted value adds its two base-32 digits; the sum is a multiple of 32. A
+// letter outside the alphabet counts as the page's script would count it.
+const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+const passes = (chars) => {
+  let sum = 0;
+  for (let i = chars.length - 1, weight = 1; i >= 0; i--, weight = 3 - weight) {
+    const value = weight * ALPHABET.indexOf(chars[i]);
+    sum += Math.floor(value / 32) + value % 32;
+  }
+  return chars.length > 0 && sum % 32 === 0;
+};
+// An ID's characters without its prefix and dashes, uppercased.
+const charsOf = (id) => id.toUpperCase().replace(/-/g, '').replace(/^RB/, '');
 const DOLL_VIEW = (id) => ['This doll is registered on Rebornly', id, 'Rebornly is coming soon'];
 const NOT_FOUND = ['Page not found', 'There is no page at this address.', 'Back to the start page'];
 const ASSETLINKS = '[]';
@@ -233,13 +252,15 @@ const brief = (v) => ({ url: v.url, title: v.title, main: lines(v.main), dollId:
 try {
   // 1. A right Doll ID, as a QR code carries it and as someone types it.
   const shown = [
-    ['/d/RB-DVP8B0', 'RB-DVP8B0'],
-    ['/d/rb-hkyrke', 'RB-HKYRKE'],
-    ['/d/RB-RJGTKV/', 'RB-RJGTKV'],
-    ['/d/Rb-dJ9xWc', 'RB-DJ9XWC'],
-    ['/d/rB-TTX466/', 'RB-TTX466'],
+    ['/d/RB-T9T3A-2K714', 'RB-T9T3A-2K714'],
+    ['/d/rb-fwgcw-asfzn', 'RB-FWGCW-ASFZN'],
+    ['/d/RB-QRNC4-2P59M/', 'RB-QRNC4-2P59M'],
+    ['/d/Rb-p4jGp-82yE7', 'RB-P4JGP-82YE7'],
+    ['/d/rB-6x8C3-mPr4M/', 'RB-6X8C3-MPR4M'],
   ];
   check('the shown IDs are the shared vectors', same(shown.map(([, id]) => id), VALID));
+  check('the shared vectors are printed IDs, right by the rule', VALID.every((id) =>
+    /^RB-[0-9A-HJKMNP-TV-Z]{5}-[0-9A-HJKMNP-TV-Z]{5}$/.test(id) && passes(charsOf(id))), VALID);
   for (const [path, id] of shown) {
     const v = await visit(path);
     check(`${path} shows only the Doll view with ${id}`, v.loaded && same(lines(v.main), DOLL_VIEW(id))
@@ -252,33 +273,58 @@ try {
   }
 
   // 2. Everything else is a plain "Page not found".
+  //    The third field says what stops a path, and is proven before Chrome
+  //    sees it: 'check' - ten characters of the alphabet in the printed shape
+  //    whose sum is wrong, so only the check character stops it; 'shape' -
+  //    characters whose sum comes out right by the page's own arithmetic (a
+  //    letter outside the alphabet counted as the page would count it), so
+  //    only the path's shape stops them; 'look-alike' - a right ID once O is
+  //    read as 0 and I or L as 1, which the page does not do.
   const notFound = [
-    ['/d/RB-DVP8B1', 'the check character is wrong'],
-    ['/d/RB-DVQ8B0', 'one character is wrong'],
-    ['/d/RB-VDP8B0', 'two neighbours are swapped'],
-    ['/d/RB-HKYRKF', 'the check character is wrong'],
-    ['/d/RB-RJGTVK', 'the last two are swapped'],
-    ['/d/RB-DVP8BO', 'a letter O stands for the zero (the page does not read look-alikes)'],
+    ['/d/RB-T9T3A-2K715', 'the check character is wrong', 'check'],
+    ['/d/RB-T9T4A-2K714', 'one character is wrong', 'check'],
+    ['/d/RB-9TT3A-2K714', 'two neighbours are swapped', 'check'],
+    ['/d/RB-T9T32-AK714', 'two neighbours across the dash are swapped', 'check'],
+    ['/d/RB-FWGCW-ASFZP', 'the check character is wrong', 'check'],
+    ['/d/RB-QRNC4-2P5M9', 'the last two are swapped', 'check'],
+    // RB-D0VP8-B1K7V is a right ID. The page does not read look-alikes.
+    ['/d/RB-DOVP8-B1K7V', 'a letter O stands for the zero', 'look-alike'],
+    ['/d/RB-D0VP8-BIK7V', 'a letter I stands for the one', 'look-alike'],
+    ['/d/rb-d0vp8-blk7v', 'a letter l stands for the one', 'look-alike'],
     // Letters outside the alphabet, each in an ID whose check sum would come
-    // out right if the letter were let through: only the path's shape stops them.
-    ['/d/RB-BPDEIF', 'it has an I'],
-    ['/d/RB-PF3DSL', 'it has an L'],
-    ['/d/RB-14OWRG', 'it has an O'],
-    ['/d/RB-H0NUBY', 'it has a U'],
+    // out right if the letter were let through.
+    ['/d/RB-5F5IA-DYHJB', 'it has an I', 'shape'],
+    ['/d/RB-ER9Y3-4KYLG', 'it has an L', 'shape'],
+    ['/d/RB-P1K69-HZO13', 'it has an O', 'shape'],
+    ['/d/RB-MED3T-6UMC8', 'it has a U', 'shape'],
     ['/d/RB-TR-000123', 'it is a transfer receipt number'],
-    ['/d/RB-DVP8B', 'it is five characters'],
-    ['/d/RB-DVP8B00', 'it is seven characters'],
-    ['/d/RBDVP8B0', 'the dash is missing'],
-    ['/d/XB-DVP8B0', 'the prefix is not RB'],
-    ['/d/RB-DVP8B0/x', 'something follows the ID'],
-    ['/d/RB-DVP8B0//', 'two slashes follow the ID'],
-    ['/x/RB-DVP8B0', 'the folder is not /d/'],
-    ['/D/RB-DVP8B0', 'the folder is /D/, not /d/'],
+    ['/d/RB-DVP8B0', 'it is the retired six-character draft form', 'shape'],
+    ['/d/RB-T9T3A-2K75', 'it is nine characters', 'shape'],
+    ['/d/RB-T9T3A-2K714W', 'it is eleven characters', 'shape'],
+    ['/d/RB-T9T3-A2K714', 'the dash comes after four characters', 'shape'],
+    ['/d/RB-T9T3A2K714', 'the second dash is missing', 'shape'],
+    ['/d/RBT9T3A-2K714', 'the first dash is missing', 'shape'],
+    ['/d/RBT9T3A2K714', 'both dashes are missing', 'shape'],
+    ['/d/XB-T9T3A-2K714', 'the prefix is not RB'],
+    ['/d/RB-T9T3A-2K714/x', 'something follows the ID'],
+    ['/d/RB-T9T3A-2K714//', 'two slashes follow the ID'],
+    ['/x/RB-T9T3A-2K714', 'the folder is not /d/'],
+    ['/D/RB-T9T3A-2K714', 'the folder is /D/, not /d/'],
     ['/d/', 'there is no ID'],
-    ['/d/RB%2DDVP8B0', 'the dash is percent-encoded'],
+    ['/d/RB%2DT9T3A-2K714', 'the first dash is percent-encoded'],
+    ['/d/RB-T9T3A%2D2K714', 'the second dash is percent-encoded'],
+    ['/d/RB-T9T3A%202K714', 'a space stands for the second dash'],
     ['/d/%3Cscript%3E', 'it is markup'],
     ['/foo', 'it is any other path'],
   ];
+  for (const [path, why, stop] of notFound.filter(([, , stop]) => stop)) {
+    const chars = charsOf(path.slice('/d/'.length));
+    const printedShape = /^\/d\/RB-[0-9A-HJKMNP-TV-Z]{5}-[0-9A-HJKMNP-TV-Z]{5}$/i.test(path);
+    const proven = stop === 'check' ? printedShape && !passes(chars)
+      : stop === 'shape' ? passes(chars)
+        : /[OIL]/.test(chars) && passes(chars.replace(/O/g, '0').replace(/[IL]/g, '1'));
+    check(`${path} is stopped by its ${stop} alone (${why})`, proven, { chars, stop });
+  }
   for (const [path, why] of notFound) {
     const v = await visit(path);
     check(`${path} shows "Page not found" (${why})`, v.loaded && same(lines(v.main), NOT_FOUND) && v.notFoundShown
@@ -290,8 +336,8 @@ try {
 
   // 3. Without JavaScript even a right ID stays "Page not found": the page
   //    never claims a Doll unless the check has run.
-  const noScript = await visit('/d/RB-DVP8B0', { javascript: false });
-  check('without JavaScript /d/RB-DVP8B0 shows "Page not found"', noScript.loaded
+  const noScript = await visit('/d/RB-T9T3A-2K714', { javascript: false });
+  check('without JavaScript /d/RB-T9T3A-2K714 shows "Page not found"', noScript.loaded
     && same(lines(noScript.main), NOT_FOUND) && noScript.dollId === '' && noScript.title === 'Page not found — Rebornly',
     brief(noScript));
 
