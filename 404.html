@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Page not found — Rebornly</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; script-src 'sha256-Mi2PR4g9s8FkLWsSsMhxegqS+FY9Iv6XkXBQoBqii2E='; base-uri 'none'; form-action 'none'">
+  <meta name="theme-color" content="#f8f5f0">
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/png" href="/assets/branding/favicon2.png">
+  <style>
+    :root {
+      color-scheme: light;
+      --ivory:#f8f5f0; --ink:#22302a; --body:#5e625c; --muted:#6e7269; --line:#e7ded6;
+      --serif:"Noto Serif","DM Serif Display",Georgia,"Times New Roman",serif;
+      --sans:Inter,Roboto,"Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;
+      --gutter:clamp(20px,5vw,72px);
+    }
+    * { box-sizing:border-box; }
+    [hidden] { display:none !important; }
+    html { background:var(--ivory); }
+    body {
+      margin:0; min-height:100svh; display:flex; flex-direction:column;
+      background:var(--ivory); color:var(--body); font-family:var(--sans);
+      font-size:17px; line-height:1.6; -webkit-font-smoothing:antialiased;
+    }
+    .shell { width:min(100%,720px); margin:0 auto; padding-inline:var(--gutter); }
+    header .shell { display:flex; align-items:center; justify-content:center; min-height:74px; padding-block:8px; }
+    header img { width:112px; height:auto; mix-blend-mode:multiply; display:block; }
+    main { flex:1 0 auto; }
+    main .shell { padding-block:clamp(30px,7vw,64px); }
+    h1 { font-family:var(--serif); color:var(--ink); font-weight:400; margin:0 0 18px;
+         font-size:clamp(28px,7vw,38px); line-height:1.14; letter-spacing:-.015em; }
+    p { margin:0 0 16px; max-width:60ch; }
+    a { color:var(--ink); }
+    .doll-id { color:var(--ink); font-size:clamp(22px,6vw,28px); font-weight:600; line-height:1.3;
+               letter-spacing:.08em; font-variant-numeric:tabular-nums; }
+    .back { display:inline-block; margin-top:14px; color:var(--muted); font-size:15px; }
+    .back:hover, .back:focus-visible { color:var(--ink); }
+    footer .shell { padding-block:26px; display:grid; justify-items:center; gap:10px; text-align:center; }
+    .footer-links { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:4px 14px; }
+    .footer-links a { color:var(--muted); font-size:13px; text-decoration:none; }
+    .footer-links a:hover, .footer-links a:focus-visible { color:var(--ink); text-decoration:underline; }
+    .footer-links a:focus-visible, .back:focus-visible, main a:focus-visible { outline:3px solid var(--ink); outline-offset:4px; border-radius:2px; }
+    .footer-links span { color:var(--line); }
+    footer .copyright { margin:0; color:var(--muted); font-size:12px; }
+    footer img { width:92px; height:auto; mix-blend-mode:multiply; display:block; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="shell">
+      <a href="/"><img src="/assets/branding/rebornly_logo.png" alt="Rebornly" width="539" height="160"></a>
+    </div>
+  </header>
+
+  <main>
+    <div class="shell">
+      <div id="notFound">
+        <h1>Page not found</h1>
+        <p>There is no page at this address.</p>
+        <a class="back" href="/">Back to the start page</a>
+      </div>
+      <div id="doll" hidden>
+        <h1>This doll is registered on Rebornly</h1>
+        <p class="doll-id" id="dollId" translate="no"></p>
+        <p>Rebornly is coming soon</p>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="shell">
+      <img src="/assets/branding/rebornly_logo.png" alt="Rebornly" width="539" height="160">
+      <nav class="footer-links" aria-label="Site documents">
+        <a href="/privacy/">Privacy</a>
+        <span aria-hidden="true">&middot;</span>
+        <a href="/terms/">Terms</a>
+        <span aria-hidden="true">&middot;</span>
+        <a href="/contact/">Contact</a>
+      </nav>
+      <p class="copyright">&copy; 2026 Rebornly</p>
+    </div>
+  </footer>
+  <script>
+    // DOLL-ID-01: GitHub Pages answers every unknown path with this page, and a
+    // printed QR code opens https://rebornlyapp.com/d/RB-XXXXX-XXXXX. Only a
+    // Doll ID in exactly that form whose check character is right turns the
+    // page into the Doll view; anything else stays "Page not found", which is
+    // also all a visitor sees without JavaScript. The page asks nothing of any
+    // server and stores nothing, so it cannot tell whether the Doll exists or
+    // who may see it: every ID with a right check character reads the same.
+    // Changing this script means updating its sha256 in the
+    // Content-Security-Policy above (scripts/test-site-pages.mjs prints the
+    // right one).
+    (() => {
+      const match = /^\/d\/(?:RB|rb|Rb|rB)-([0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{5})-([0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{5})\/?$/.exec(location.pathname);
+      if (!match) return;
+      const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+      const first = match[1].toUpperCase();
+      const second = match[2].toUpperCase();
+      // Luhn mod 32 over all ten characters (nine random ones, then the check
+      // character), the same rule as the app and the database: from the right
+      // the weights are 1, 2, 1, 2 ...; a weighted value adds its two base-32
+      // digits; the ID is right when the sum is a multiple of 32.
+      const chars = first + second;
+      let sum = 0;
+      for (let i = chars.length - 1, weight = 1; i >= 0; i--, weight = 3 - weight) {
+        const value = weight * ALPHABET.indexOf(chars[i]);
+        sum += Math.floor(value / 32) + value % 32;
+      }
+      if (sum % 32 !== 0) return;
+      document.getElementById('dollId').textContent = 'RB-' + first + '-' + second;
+      document.getElementById('notFound').hidden = true;
+      document.getElementById('doll').hidden = false;
+      document.title = 'Rebornly';
+    })();
+  </script>
+</body>
+</html>
