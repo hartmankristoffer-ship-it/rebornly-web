@@ -4,30 +4,73 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src https://wzvmdfvheoenuucmizfy.supabase.co https://cavjsnlmktsjlofhokkg.supabase.co; base-uri 'none'; form-action 'self'; frame-ancestors 'none'">
-  <title>Rebornly — Set new password</title>
+  <meta name="robots" content="noindex">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src https://wzvmdfvheoenuucmizfy.supabase.co https://cavjsnlmktsjlofhokkg.supabase.co; base-uri 'none'; form-action 'self'; frame-ancestors 'none'">
+  <title>Rebornly — Set a new password</title>
+  <link rel="icon" type="image/png" href="/assets/branding/favicon2.png">
   <style>
-    :root{color-scheme:dark}body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#101010;color:#f5f1ee}main{width:min(92vw,520px)}.card{background:#191919;border:1px solid #333;border-radius:20px;padding:28px;box-shadow:0 18px 60px rgba(0,0,0,.35)}h1{margin:0 0 10px;font-size:1.8rem}p{color:#c9c3bf;line-height:1.5}label{display:block;margin:18px 0 7px;font-weight:650}input{width:100%;box-sizing:border-box;padding:14px;border-radius:12px;border:1px solid #555;background:#0d0d0d;color:#fff}button{width:100%;margin-top:20px;padding:14px 16px;border:0;border-radius:12px;font-weight:750;cursor:pointer}#status{margin-top:16px;min-height:24px;line-height:1.45}.small{font-size:.9rem;color:#9f9995}
+    /* The app's brown palette (Design Lab tokens, lib/design_system/tokens/rc_colors.dart). */
+    :root{
+      color-scheme:light;
+      --ground:#f9f5ef;--card:#fbf7f4;--text:#1c1a18;--heading:#2b211b;--muted:#6b6763;
+      --line:#e6dfd7;--on-fill:#2a211d;--fill-a:#f3eae0;--fill-b:#e5d6c6;
+      --error:#9a3f45;--error-fill:#f7e7e7;--shadow:rgba(90,61,56,.09);
+      --serif:"Noto Serif","DM Serif Display",Georgia,"Times New Roman",serif;
+      --sans:Inter,Roboto,"Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;
+    }
+    *{box-sizing:border-box}
+    /* Hidden until the script confirms the page is the top window: a meta CSP
+       cannot carry frame-ancestors, and GitHub Pages sends no headers. */
+    html{visibility:hidden}
+    html.top{visibility:visible}
+    html,body{background:var(--ground)}
+    body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px 16px;font-family:var(--sans);color:var(--text);line-height:1.55;-webkit-font-smoothing:antialiased}
+    main{width:min(100%,460px)}
+    .brand{display:flex;justify-content:center;margin-bottom:20px}
+    .brand img{width:135px;height:auto}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px 24px;box-shadow:0 12px 40px var(--shadow)}
+    h1{margin:0 0 8px;font-family:var(--serif);font-weight:400;font-size:1.75rem;color:var(--heading)}
+    p{margin:0;color:var(--muted)}
+    label{display:block;margin:20px 0 6px;font-weight:600;color:var(--heading)}
+    input{width:100%;padding:14px;border-radius:14px;border:1px solid var(--line);background:#fff;color:var(--text);font:inherit}
+    input:focus{outline:2px solid var(--fill-b);outline-offset:1px}
+    button{width:100%;margin-top:24px;padding:14px 16px;border:0;border-radius:14px;font:inherit;font-weight:600;color:var(--on-fill);background:linear-gradient(152deg,var(--fill-a),var(--fill-b));cursor:pointer}
+    button[disabled]{opacity:.6;cursor:default}
+    .hint{margin-top:6px;font-size:.9rem}
+    #status{margin-top:18px;min-height:1.5em}
+    #status.error{padding:12px 14px;border-radius:12px;background:var(--error-fill);color:var(--error)}
+    #status.done{color:var(--heading)}
   </style>
 </head>
 <body>
 <main>
+  <div class="brand"><img src="/assets/branding/rebornly_logo.png" alt="Rebornly"></div>
   <div class="card">
     <h1>Set a new password</h1>
-    <p>Choose a new password for your Rebornly account.</p>
-    <form id="form" autocomplete="off">
+    <p id="intro">Choose a new password for your Rebornly account.</p>
+    <form id="form" autocomplete="off" hidden>
       <label for="password">New password</label>
       <input id="password" type="password" minlength="15" required autocomplete="new-password">
+      <p class="hint">At least 15 characters.</p>
       <label for="confirm">Confirm password</label>
       <input id="confirm" type="password" minlength="15" required autocomplete="new-password">
-      <button type="submit">Update password</button>
+      <button id="submit" type="submit">Update password</button>
     </form>
     <div id="status" role="status" aria-live="polite"></div>
-    <p class="small">Rebornly secure account recovery</p>
   </div>
 </main>
 <script>
 (() => {
+  // AUTH-RESET-01 (Rebornly issue #184). Two kinds of recovery link reach this page:
+  //  * the current one, from each project's "Reset password" email template:
+  //      /r/AUTH-06/#token_hash=<hash>&type=recovery&project=<project ref>
+  //    In the fragment, so the hash never reaches the web host or its logs. It
+  //    is verified (POST /auth/v1/verify) only when the member submits a new
+  //    password, so a mail scanner that opens the link never spends it.
+  //  * the older one, still in members' inboxes during the switch:
+  //      /r/AUTH-06#access_token=<jwt>&type=recovery
+  // Each project's public URL and publishable key only. No token is ever written
+  // to the console, to storage, or into any request but the auth server's own.
   const configs = {
     wzvmdfvheoenuucmizfy: {
       url: 'https://wzvmdfvheoenuucmizfy.supabase.co',
@@ -38,87 +81,152 @@
       key: 'sb_publishable_lOCqm6RehtIJ8OwgLbTkDg_lnXoUWg-'
     }
   };
+  const MIN_LENGTH = 15; // the app's rule and supabase/config.toml minimum_password_length
+  const INVALID = 'This recovery link is invalid or has expired. Request a new password reset email from the Rebornly app.';
+  const UNKNOWN = 'This recovery link does not belong to a recognized Rebornly environment. Request a new password reset email from the Rebornly app.';
 
+  const query = new URLSearchParams(location.search);
   const hash = new URLSearchParams(location.hash.startsWith('#') ? location.hash.slice(1) : '');
-  const accessToken = hash.get('access_token');
-  const type = hash.get('type');
-  const errorDescription = hash.get('error_description');
-  history.replaceState(null, '', location.pathname + location.search);
+  // Take the token out of the address bar and the history at once.
+  history.replaceState(null, '', location.pathname);
+
+  // Framed by another page: show nothing and touch nothing.
+  if (window.self !== window.top) return;
+  document.documentElement.classList.add('top');
 
   const form = document.getElementById('form');
   const status = document.getElementById('status');
+  const submit = document.getElementById('submit');
 
+  function say(message, kind) {
+    status.textContent = message;
+    status.className = kind || '';
+  }
   function fail(message) {
     form.hidden = true;
-    status.textContent = message;
+    say(message, 'error');
+  }
+  function projectFromJwt(token) {
+    try {
+      const part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      const padded = part + '='.repeat((4 - part.length % 4) % 4);
+      const payload = JSON.parse(decodeURIComponent(Array.from(atob(padded), c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0')).join('')));
+      const issuer = String(payload.iss || '');
+      return Object.keys(configs).find(ref => issuer.includes(ref)) || null;
+    } catch (_) {
+      return null;
+    }
+  }
+  function known(ref) {
+    return Boolean(ref) && Object.prototype.hasOwnProperty.call(configs, ref);
   }
 
-  if (!accessToken || (type && type !== 'recovery')) {
-    fail(errorDescription || 'This recovery link is invalid or has expired. Request a new password reset email.');
-    return;
+  // Which link is this?
+  let config = null;
+  let tokenHash = null;
+  let accessToken = null;
+  if (query.has('token_hash') || query.has('code')) {
+    // A token in the query: an app reset from before this change (?code=), or a
+    // template written with ? instead of #. Neither can be finished here.
+    return fail(INVALID);
+  } else if (hash.has('token_hash')) {
+    tokenHash = hash.get('token_hash');
+    const ref = hash.get('project');
+    if (!tokenHash || hash.get('type') !== 'recovery') return fail(INVALID);
+    if (!known(ref)) return fail(UNKNOWN);
+    config = configs[ref];
+  } else if (hash.has('access_token')) {
+    accessToken = hash.get('access_token');
+    const type = hash.get('type');
+    if (!accessToken || (type && type !== 'recovery')) return fail(INVALID);
+    const ref = projectFromJwt(accessToken);
+    if (!known(ref)) return fail(UNKNOWN);
+    config = configs[ref];
+  } else {
+    // An error the auth server put on the link, or no token at all.
+    return fail(INVALID);
+  }
+  form.hidden = false;
+
+  async function call(path, method, bearer, body) {
+    const headers = { apikey: config.key, 'Content-Type': 'application/json' };
+    if (bearer) headers.Authorization = 'Bearer ' + bearer;
+    const response = await fetch(config.url + path, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+      credentials: 'omit',
+      cache: 'no-store',
+      referrerPolicy: 'no-referrer'
+    });
+    const json = await response.json().catch(() => ({}));
+    return { ok: response.ok, status: response.status, json };
   }
 
-  let ref = null;
-  try {
-    const payloadPart = accessToken.split('.')[1];
-    const normalized = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = normalized + '='.repeat((4 - normalized.length % 4) % 4);
-    const payload = JSON.parse(decodeURIComponent(Array.from(atob(padded), c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0')).join('')));
-    const issuer = String(payload.iss || '');
-    ref = Object.keys(configs).find(candidate => issuer.includes(candidate)) || null;
-  } catch (_) {}
-
-  if (!ref) {
-    fail('This recovery link does not belong to a recognized Rebornly environment.');
-    return;
+  // Only an answer that the link or its session is no good ends the page; a
+  // busy or failing server, or a password the server did not take, keeps the
+  // form so the member can try again.
+  function retryMessage(answer) {
+    const reason = answer.json.error_code || '';
+    if (reason === 'weak_password') return 'Choose a stronger password of at least ' + MIN_LENGTH + ' characters.';
+    if (reason === 'same_password') return 'Choose a password you have not used for this account before.';
+    if (answer.status === 429) return 'Too many attempts. Wait a minute and try again.';
+    return 'Your password was not changed. Try again.';
+  }
+  function terminal(answer) {
+    return answer.status === 401 || answer.status === 403 || answer.status === 404;
   }
 
-  const config = configs[ref];
-
+  let busy = false;
   form.addEventListener('submit', async event => {
     event.preventDefault();
+    if (busy) return;
     const password = document.getElementById('password').value;
     const confirm = document.getElementById('confirm').value;
+    if (password.length < MIN_LENGTH) return say('Use at least ' + MIN_LENGTH + ' characters.', 'error');
+    if (password !== confirm) return say('The passwords do not match.', 'error');
 
-    if (password.length < 15) {
-      status.textContent = 'Use at least 15 characters.';
-      return;
-    }
-    if (password !== confirm) {
-      status.textContent = 'The passwords do not match.';
-      return;
-    }
-
-    status.textContent = 'Updating password…';
-
+    busy = true;
+    submit.disabled = true;
+    say('Updating your password…');
     try {
-      const response = await fetch(config.url + '/auth/v1/user', {
-        method: 'PUT',
-        headers: {
-          apikey: config.key,
-          Authorization: 'Bearer ' + accessToken,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ password })
-      });
-      const body = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        status.textContent = body.msg || body.message || body.error_description || 'The password could not be updated. The recovery session may have expired.';
-        return;
+      // The recovery session: from the token hash, spent once here, or the
+      // older link's own.
+      if (tokenHash) {
+        const verified = await call('/auth/v1/verify', 'POST', null, { type: 'recovery', token_hash: tokenHash });
+        if (!verified.ok) {
+          // A busy or failing server has not spent the hash: keep it for a retry.
+          if (verified.status === 429 || verified.status >= 500) return say(retryMessage(verified), 'error');
+          tokenHash = null;
+          return fail(INVALID);
+        }
+        tokenHash = null; // spent: never sent twice
+        accessToken = verified.json.access_token || null;
+        if (!accessToken) return fail(INVALID);
       }
 
-      try {
-        await fetch(config.url + '/auth/v1/logout?scope=global', {
-          method: 'POST',
-          headers: { apikey: config.key, Authorization: 'Bearer ' + accessToken }
-        });
-      } catch (_) {}
+      const updated = await call('/auth/v1/user', 'PUT', accessToken, { password });
+      if (!updated.ok) {
+        if (terminal(updated)) {
+          accessToken = null;
+          return fail(INVALID);
+        }
+        return say(retryMessage(updated), 'error');
+      }
 
+      // Every device signs in again with the new password.
+      try { await call('/auth/v1/logout?scope=global', 'POST', accessToken); } catch (_) {}
+      accessToken = null;
+      document.getElementById('password').value = '';
+      document.getElementById('confirm').value = '';
       form.hidden = true;
-      status.textContent = 'Password updated successfully. You can now return to Rebornly and sign in.';
+      document.getElementById('intro').hidden = true;
+      say('Password updated. You can now return to Rebornly and sign in.', 'done');
     } catch (_) {
-      status.textContent = 'Network error. Please try again.';
+      say('Rebornly can’t be reached right now. Check your connection and try again.', 'error');
+    } finally {
+      busy = false;
+      submit.disabled = false;
     }
   });
 })();
