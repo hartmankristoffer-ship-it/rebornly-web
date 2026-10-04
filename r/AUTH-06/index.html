@@ -19,6 +19,10 @@
       --sans:Inter,Roboto,"Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;
     }
     *{box-sizing:border-box}
+    /* Hidden until the script confirms the page is the top window: a meta CSP
+       cannot carry frame-ancestors, and GitHub Pages sends no headers. */
+    html{visibility:hidden}
+    html.top{visibility:visible}
     html,body{background:var(--ground)}
     body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px 16px;font-family:var(--sans);color:var(--text);line-height:1.55;-webkit-font-smoothing:antialiased}
     main{width:min(100%,460px)}
@@ -59,9 +63,10 @@
 (() => {
   // AUTH-RESET-01 (Rebornly issue #184). Two kinds of recovery link reach this page:
   //  * the current one, from each project's "Reset password" email template:
-  //      /r/AUTH-06/?token_hash=<hash>&type=recovery&project=<project ref>
-  //    The hash is verified (POST /auth/v1/verify) only when the member submits
-  //    a new password, so a mail scanner that opens the link never spends it.
+  //      /r/AUTH-06/#token_hash=<hash>&type=recovery&project=<project ref>
+  //    In the fragment, so the hash never reaches the web host or its logs. It
+  //    is verified (POST /auth/v1/verify) only when the member submits a new
+  //    password, so a mail scanner that opens the link never spends it.
   //  * the older one, still in members' inboxes during the switch:
   //      /r/AUTH-06#access_token=<jwt>&type=recovery
   // Each project's public URL and publishable key only. No token is ever written
@@ -84,6 +89,10 @@
   const hash = new URLSearchParams(location.hash.startsWith('#') ? location.hash.slice(1) : '');
   // Take the token out of the address bar and the history at once.
   history.replaceState(null, '', location.pathname);
+
+  // Framed by another page: show nothing and touch nothing.
+  if (window.self !== window.top) return;
+  document.documentElement.classList.add('top');
 
   const form = document.getElementById('form');
   const status = document.getElementById('status');
@@ -116,10 +125,14 @@
   let config = null;
   let tokenHash = null;
   let accessToken = null;
-  if (query.has('token_hash')) {
-    tokenHash = query.get('token_hash');
-    const ref = query.get('project');
-    if (!tokenHash || query.get('type') !== 'recovery') return fail(INVALID);
+  if (query.has('token_hash') || query.has('code')) {
+    // A token in the query: an app reset from before this change (?code=), or a
+    // template written with ? instead of #. Neither can be finished here.
+    return fail(INVALID);
+  } else if (hash.has('token_hash')) {
+    tokenHash = hash.get('token_hash');
+    const ref = hash.get('project');
+    if (!tokenHash || hash.get('type') !== 'recovery') return fail(INVALID);
     if (!known(ref)) return fail(UNKNOWN);
     config = configs[ref];
   } else if (hash.has('access_token')) {
@@ -130,8 +143,7 @@
     if (!known(ref)) return fail(UNKNOWN);
     config = configs[ref];
   } else {
-    // An error the auth server put on the link, a ?code= from a reset the
-    // app requested before this change, or no token at all.
+    // An error the auth server put on the link, or no token at all.
     return fail(INVALID);
   }
   form.hidden = false;
@@ -148,7 +160,21 @@
       referrerPolicy: 'no-referrer'
     });
     const json = await response.json().catch(() => ({}));
-    return { ok: response.ok, json };
+    return { ok: response.ok, status: response.status, json };
+  }
+
+  // Only an answer that the link or its session is no good ends the page; a
+  // busy or failing server, or a password the server did not take, keeps the
+  // form so the member can try again.
+  function retryMessage(answer) {
+    const reason = answer.json.error_code || '';
+    if (reason === 'weak_password') return 'Choose a stronger password of at least ' + MIN_LENGTH + ' characters.';
+    if (reason === 'same_password') return 'Choose a password you have not used for this account before.';
+    if (answer.status === 429) return 'Too many attempts. Wait a minute and try again.';
+    return 'Your password was not changed. Try again.';
+  }
+  function terminal(answer) {
+    return answer.status === 401 || answer.status === 403 || answer.status === 404;
   }
 
   let busy = false;
@@ -168,27 +194,31 @@
       // older link's own.
       if (tokenHash) {
         const verified = await call('/auth/v1/verify', 'POST', null, { type: 'recovery', token_hash: tokenHash });
-        tokenHash = null; // answered: spent or refused, never sent twice
-        accessToken = verified.ok ? verified.json.access_token || null : null;
+        if (!verified.ok) {
+          // A busy or failing server has not spent the hash: keep it for a retry.
+          if (verified.status === 429 || verified.status >= 500) return say(retryMessage(verified), 'error');
+          tokenHash = null;
+          return fail(INVALID);
+        }
+        tokenHash = null; // spent: never sent twice
+        accessToken = verified.json.access_token || null;
         if (!accessToken) return fail(INVALID);
       }
 
       const updated = await call('/auth/v1/user', 'PUT', accessToken, { password });
       if (!updated.ok) {
-        const reason = updated.json.error_code || '';
-        if (reason === 'weak_password') {
-          say('Choose a stronger password of at least ' + MIN_LENGTH + ' characters.', 'error');
-        } else if (reason === 'same_password') {
-          say('Choose a password you have not used for this account before.', 'error');
-        } else {
-          fail(INVALID);
+        if (terminal(updated)) {
+          accessToken = null;
+          return fail(INVALID);
         }
-        return;
+        return say(retryMessage(updated), 'error');
       }
 
       // Every device signs in again with the new password.
       try { await call('/auth/v1/logout?scope=global', 'POST', accessToken); } catch (_) {}
       accessToken = null;
+      document.getElementById('password').value = '';
+      document.getElementById('confirm').value = '';
       form.hidden = true;
       document.getElementById('intro').hidden = true;
       say('Password updated. You can now return to Rebornly and sign in.', 'done');
