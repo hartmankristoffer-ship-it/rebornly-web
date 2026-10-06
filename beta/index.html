@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Join the beta waitlist — Rebornly</title>
+  <title>The beta is full — Rebornly</title>
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Rebornly">
-  <meta property="og:title" content="Join the beta waitlist — Rebornly">
-  <meta property="og:description" content="Sign up to be invited to the Rebornly beta.">
+  <meta property="og:title" content="The beta is full — Rebornly">
+  <meta property="og:description" content="The Rebornly beta is full.">
   <meta property="og:url" content="https://rebornlyapp.com/beta/">
   <meta property="og:image" content="https://rebornlyapp.com/assets/images/share.jpg">
   <meta property="og:image:width" content="1200">
@@ -15,8 +15,8 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; script-src 'sha256-LTEOpwBOARVvkyuLUkaX+Yb8kn644FTiVyvzOIMbTs0='; base-uri 'none'; form-action 'none'; connect-src https://cavjsnlmktsjlofhokkg.supabase.co">
-  <meta name="description" content="Sign up to be invited to the Rebornly beta.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; script-src 'sha256-7avjDzwniMHyl+YQGrLmnlaUGIMhMQwsg7641D3A0A0='; base-uri 'none'; form-action 'none'; connect-src 'none'">
+  <meta name="description" content="The Rebornly beta is full.">
   <meta name="theme-color" content="#f8f5f0">
   <meta name="robots" content="noindex">
   <link rel="icon" type="image/png" href="/assets/branding/favicon2.png">
@@ -80,13 +80,10 @@
 
   <main>
     <div class="shell">
-      <h1>Join the beta waitlist</h1>
+      <h1>The beta is full</h1>
       <div id="betaClosed">
-      <p>The application is not open yet. Rebornly's beta is planned for
-      November 2026, and the form will be here when it opens.</p>
-      <p>There is no form on this site yet, so there is nothing to submit and
-      no list to be added to. The site is hosted on GitHub Pages, which logs
-      visitors' IP addresses for security purposes.</p>
+      <p>The beta is full. Thank you to everyone who signed up. We will email
+      you when the beta starts.</p>
       </div>
       <form id="betaForm" class="beta-form" hidden novalidate>
         <p>Leave your details and we will invite you when the beta opens.</p>
@@ -136,7 +133,7 @@
     // sets INTAKE_URL, adds the function's origin to connect-src, and updates
     // this script's sha256 in the Content-Security-Policy above.
     (() => {
-      const INTAKE_URL = 'https://cavjsnlmktsjlofhokkg.supabase.co/functions/v1/website-intake';
+      const INTAKE_URL = '';
       if (!INTAKE_URL) return;
       const send = (payload) => fetch(INTAKE_URL, {
         method: 'POST', headers: { 'content-type': 'text/plain;charset=UTF-8' },
